@@ -1,7 +1,6 @@
 /**
  * Command Line utility definitions
  */
-
 #include <argp.h>
 
 #include <dxwifi/cli.h>
