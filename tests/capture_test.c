@@ -27,42 +27,11 @@ int main(int argc, char** argv) {
     }
 
     // On arm platforms I've had no luck with pcap_create. Using deprecated pcap_open_live instead
-    pcap_handle = pcap_open_live(argv[1], BUFSIZ, enable_monitor, 10000, error_buffer);
+    pcap_handle = pcap_open_live(argv[1], SNAPLEN_MAX, enable_monitor, 10000, error_buffer);
     if (pcap_handle == NULL) {
-        fprintf(stderr, "\nErr: Coulnd't open device %s: %s\n", argv[1], error_buffer);
+        fprintf(stderr, "\nErr: Failed to open device %s: %s\n", argv[1], error_buffer);
         return 1;
     }
-
-
-/*
-    pcap_handle = pcap_create(argv[1], error_buffer);
-    if (pcap_handle == NULL) {
-        fprintf(stderr, "Err: %s device not found\n", argv[1]);
-        return 1;
-    }
-    if(enable_monitor && !pcap_can_set_rfmon(pcap_handle)) {
-        fprintf(stderr, "Err: %s cannot be enabled in monitor mode\n", argv[1]);
-        pcap_close(pcap_handle);
-        return 1;
-    }
-
-    pcap_set_rfmon(pcap_handle, enable_monitor);  
-    pcap_set_snaplen(pcap_handle, SNAPLEN_MAX/2);
-    pcap_set_timeout(pcap_handle, 10000); // 10 seconds
-    pcap_set_buffer_size(pcap_handle, BUFSIZ/2);
-
-    // Note: interface must be currently up. `ip link set wlan0 up`
-    return_code = pcap_activate(pcap_handle);
-    if(return_code < 0)  // All pcap error codes are less than 0
-    {
-        fprintf(stderr, "pcap_activate: %s\n", pcap_statustostr(return_code));
-        return 1;
-    }
-    if( return_code > 0) // warnings issued
-    {
-        fprintf(stderr, "pcap_activate: %s\n", pcap_statustostr(return_code));
-    }
-*/
 
     num_datalinks = pcap_list_datalinks(pcap_handle, &datalink_buffer);
     if( num_datalinks < 0) {
@@ -80,19 +49,7 @@ int main(int argc, char** argv) {
     pcap_free_datalinks(datalink_buffer);
     printf("\nCurrent Datalink type: %s\n", pcap_datalink_val_to_name(pcap_datalink(pcap_handle)));
 
-    //pcap_dispatch(pcap_handle, 5, print_packet, packet);
-    struct pcap_pkthdr header;
-    header.caplen = 0;
-    header.len = 0;
-    packet = pcap_next(pcap_handle, &header);
-    if(packet == NULL) {
-        printf("\npacket header: %d", header.caplen);
-        printf("\npacket header: %d", header.len);
-        printf("\nNo packets grabbed?\n");
-    }
-    else {
-        print_packet(NULL, &header, NULL);
-    }
+    pcap_dispatch(pcap_handle, 5, print_packet, packet);
 
     pcap_close(pcap_handle);
     return 0;
