@@ -6,10 +6,6 @@
 #ifndef DXWIFI_H
 #define DXWIFI_H
 
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
 #include <pcap.h>
 #include <radiotap/radiotap.h>
 
@@ -70,44 +66,20 @@ typedef struct {
 } dxwifi_frame;
 
 typedef struct {
-    pcap_t* handle;                         /* Session handle for PCAP  */
+    pcap_t* handle;         /* Session handle for PCAP  */
+    size_t  block_size;     /* transmission block size  */
 } dxwifi_transmitter;
 
 /**
  *  Functions
  */
 
-// TODO change the return values to enumerated error codes
 void init_dxwifi_frame(dxwifi_frame* frame);
 void teardown_dxwifi_frame(dxwifi_frame* frame);
 
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
 void close_transmitter(dxwifi_transmitter* transmitter);
 
-/**
- *  Macros
- */
-
-#define assert_M(expr, msg, ...) __assert_M(expr, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__)
-
-static void __assert_M(bool expr, const char* expr_str, const char* file, int line, const char* msg, ...) {
-  if (!expr) {
-    fprintf(stderr, "%s:%d Assertion `%s` failed : ", file, line, expr_str);
-    va_list args;
-    va_start(args, msg);
-    vfprintf(stderr, msg, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    exit(1);
-  }
-}
-
-#ifdef NDEBUG
-#define debug_assert_M(expr, msg) (void)0
-#else
-#define debug_assert_M(expr, msg) assert_M(expr, msg)
-#endif
-
-
+int transmit_file(dxwifi_transmitter* transmitter, int fd);
 
 #endif // DXWIFI_H

@@ -1,3 +1,7 @@
+/**
+ *  basic hello world exercise for pcap
+ */
+
 #include <pcap.h>
 #include <string.h>
 #include <stdbool.h>

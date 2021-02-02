@@ -2,8 +2,9 @@
  * DxWifi project library implementations
  */
 
-#include <assert.h>
 #include <stdbool.h>
+
+#include <dxwifi/utils.h>
 #include <dxwifi/dxwifi.h>
 
 void init_dxwifi_frame(dxwifi_frame* frame) {
@@ -35,5 +36,12 @@ void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
 }
 
 void close_transmitter(dxwifi_transmitter* transmitter) {
+    assert_not_null(transmitter);
+    assert_not_null(transmitter->handle);
     pcap_close(transmitter->handle);
+}
+
+int transmit_file(dxwifi_transmitter* transmit, int fd) {
+    dxwifi_frame data_frame;
+    return 0;
 }

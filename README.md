@@ -1,5 +1,5 @@
-# OreSat Live Software
+# OreSat Live Software Prototype
 
 ## Introduction
  
-Don't look here yet, we're just getting started!
+ Prototype staging ground for the OreSat Live software project
