@@ -4,18 +4,17 @@
 
 #include <stdbool.h>
 
+#include <unistd.h>
+
 #include <dxwifi/utils.h>
 #include <dxwifi/dxwifi.h>
 
-void init_dxwifi_frame(dxwifi_frame* frame) {
-    // 1. 
-    // Allocate the frame data to the block size + size of all the headers
-    // Do we want to over allocated the frame data? have some room to play with?
-    // Probably not. 
+void init_dxwifi_frame(dxwifi_frame* frame, size_t block_size) {
+    frame->__frame = (uint8_t*) calloc(1, DXWIFI_HEADER_SIZE + block_size);
 
-    // 2. Point the frame fields to the correct spots in the frame data buffer
-
-    // 3. Add the correct data to the headers
+    frame->radiotap_hdr = frame->__frame;  
+    frame->mac_hdr      = frame->radiotap_hdr + sizeof(struct ieee80211_radiotap_header);
+    frame->payload      = frame->mac_hdr + sizeof(struct ieee80211_hdr);
 }
 
 void teardown_dxwifi_frame(dxwifi_frame* frame) {
@@ -42,6 +41,21 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 }
 
 int transmit_file(dxwifi_transmitter* transmit, int fd) {
+    assert_not_null(transmit);
+
+    size_t nbytes   = 0;
+    int status      = 0;
     dxwifi_frame data_frame;
+
+    init_dxwifi_frame(&data_frame, transmit->block_size);
+
+    while ((nbytes = read(fd, data_frame.payload, transmit->block_size)) > 0) {
+        
+        // Prepare data, FEC Encode etc. 
+        status = pcap_inject(transmit->handle, data_frame.__frame, DXWIFI_HEADER_SIZE + nbytes);
+
+        debug_assert_continue(status == 0, pcap_statustostr(status));
+
+    }
     return 0;
 }
