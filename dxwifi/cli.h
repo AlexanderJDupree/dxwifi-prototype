@@ -12,9 +12,10 @@
 #define DXWIFI_CLI_H
 
 typedef struct {
-    int verbosity;
     const char* device;
     const char* input_file;
+    int         verbosity;
+    size_t      block_size;
 } command_args;
 
 int parse_args(int argc, char** argv, command_args* out);

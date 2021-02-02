@@ -42,6 +42,10 @@
 // https://www.tcpdump.org/manpages/pcap.3pcap.html
 #define SNAPLEN_MAX 65535
 
+// TODO this were defined arbitrarily. Needs review
+#define DXWIFI_BLOCK_SIZE_MIN 0
+#define DXWIFI_BLOCK_SIZE_MAX 1500
+
 /**
  *  Data structures
  */

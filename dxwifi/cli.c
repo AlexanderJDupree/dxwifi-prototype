@@ -1,7 +1,9 @@
 /**
  * Command Line utility definitions
  */
+
 #include <argp.h>
+#include <stdlib.h>
 
 #include <dxwifi/cli.h>
 #include <dxwifi/dxwifi.h>
@@ -19,8 +21,9 @@ static char doc[] =
 
 /* Available command line options */
 static struct argp_option opts[] = {
-    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode (default: mon0)" },
-    { "verbose",    'v',    0,                      0,  "Verbosity level (default: 0)"},
+    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode" },
+    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file"},
+    { "verbose",    'v',    0,                      0,  "Verbosity level"},
     {0} // Final zero field is required by argp
 }; 
 
@@ -33,6 +36,19 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
     {
     case 'd':
         args->device = arg;
+        break;
+
+    case 'b':
+        args->block_size = atoi(arg);
+        if( args->block_size < DXWIFI_BLOCK_SIZE_MIN || args->block_size > DXWIFI_BLOCK_SIZE_MAX) {
+            fprintf(stderr, 
+                "blocksize of `%ld` not in range(%d,%d)\n", 
+                args->block_size, 
+                DXWIFI_BLOCK_SIZE_MIN,
+                DXWIFI_BLOCK_SIZE_MAX
+                );
+            argp_usage(state);
+        }
         break;
 
     case 'v':
@@ -53,7 +69,15 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
     return status;
 }
 
-static struct argp argparser = { opts, parse_opt, args_doc, doc, 0, 0, 0};
+static struct argp argparser = { 
+    .options        = opts, 
+    .parser         = parse_opt, 
+    .args_doc       = args_doc, 
+    .doc            = doc, 
+    .children       = 0, 
+    .help_filter    = 0,
+    .argp_domain    = 0
+};
 
 int parse_args(int argc, char** argv, command_args* out) {
 
