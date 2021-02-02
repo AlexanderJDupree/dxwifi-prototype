@@ -6,6 +6,8 @@
 #ifndef DXWIFI_H
 #define DXWIFI_H
 
+#include <stdint.h>
+
 #include <pcap.h>
 #include <radiotap/radiotap.h>
 
@@ -29,8 +31,9 @@
 /**
  *  Default Arguments
  */
-#define DXWIFI_DFLT_DEVICE "mon0"
-#define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 20
+#define DXWIFI_DFLT_DEVICE 			"mon0"
+#define DXWIFI_DFLT_BLK_SIZE 			1400
+#define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 	20
 
 /**
  *  Limits

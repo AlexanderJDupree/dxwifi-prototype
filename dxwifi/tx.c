@@ -20,9 +20,10 @@ int main(int argc, char** argv) {
     dxwifi_transmitter transmitter;
 
     command_args args = { 
-        .verbosity  = 0,
         .device     = DXWIFI_DFLT_DEVICE,
-        .input_file = NULL
+        .input_file = NULL,
+        .verbosity  = 0,
+	.block_size = DXWIFI_DFLT_BLK_SIZE
     };
 
     parse_args(argc, argv, &args);

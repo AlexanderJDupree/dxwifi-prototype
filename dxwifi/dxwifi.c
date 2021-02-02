@@ -12,9 +12,9 @@
 void init_dxwifi_frame(dxwifi_frame* frame, size_t block_size) {
     frame->__frame = (uint8_t*) calloc(1, DXWIFI_HEADER_SIZE + block_size);
 
-    frame->radiotap_hdr = frame->__frame;  
-    frame->mac_hdr      = frame->radiotap_hdr + sizeof(struct ieee80211_radiotap_header);
-    frame->payload      = frame->mac_hdr + sizeof(struct ieee80211_hdr);
+    frame->radiotap_hdr = (struct ieee80211_radiotap_header*) frame->__frame;  
+    frame->mac_hdr      = (struct ieee80211_hdr*) frame->radiotap_hdr + sizeof(struct ieee80211_radiotap_header);
+    frame->payload      = (uint8_t*) frame->mac_hdr + sizeof(struct ieee80211_hdr);
 }
 
 void teardown_dxwifi_frame(dxwifi_frame* frame) {
@@ -45,17 +45,22 @@ int transmit_file(dxwifi_transmitter* transmit, int fd) {
 
     size_t nbytes   = 0;
     int status      = 0;
+    int frame_count = 0;
     dxwifi_frame data_frame;
 
     init_dxwifi_frame(&data_frame, transmit->block_size);
 
     while ((nbytes = read(fd, data_frame.payload, transmit->block_size)) > 0) {
         
+    	printf("nbytes: %d\n", nbytes);
         // Prepare data, FEC Encode etc. 
         status = pcap_inject(transmit->handle, data_frame.__frame, DXWIFI_HEADER_SIZE + nbytes);
 
         debug_assert_continue(status == 0, pcap_statustostr(status));
 
+	++frame_count;
+
     }
+    printf("frames: %d\n", frame_count);
     return 0;
 }
