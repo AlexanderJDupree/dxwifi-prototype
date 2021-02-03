@@ -31,8 +31,8 @@
 /**
  *  Default Arguments
  */
-#define DXWIFI_DFLT_DEVICE 			"mon0"
-#define DXWIFI_DFLT_BLK_SIZE 			1400
+#define DXWIFI_DFLT_DEVICE 			            "mon0"
+#define DXWIFI_DFLT_BLK_SIZE 			          256
 #define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 	20
 
 /**
@@ -40,7 +40,7 @@
  */
 
 // https://networkengineering.stackexchange.com/questions/32970/what-is-the-802-11-mtu
-#define MAX_PACKET_LENGTH 2304
+#define IEEE80211_MTU_MAX_LEN 2304
 
 // https://www.tcpdump.org/manpages/pcap.3pcap.html
 #define SNAPLEN_MAX 65535
@@ -48,8 +48,6 @@
 // TODO this were defined arbitrarily. Needs review
 #define DXWIFI_BLOCK_SIZE_MIN 0
 #define DXWIFI_BLOCK_SIZE_MAX 1500
-
-#define DXWIFI_HEADER_SIZE (sizeof(ieee80211_radiotap_hdr) + sizeof(ieee80211_hdr))
 
 // Length of MAC address in bytes
 #define IEEE80211_MAC_ADDR_LEN 6
@@ -76,7 +74,6 @@ typedef struct {
     ieee80211_radiotap_hdr  *radiotap_hdr;   /* frame metadata           */
     ieee80211_hdr           *mac_hdr;        /* link-layer header        */
     uint8_t                 *payload;        /* packet data              */
-    //uint32_t              *checksum;       // Do we calculate this? or does the driver append this to our packet?
 
     uint8_t                 *__frame;        /* The actual data frame    */
 } dxwifi_frame;
@@ -92,8 +89,8 @@ typedef struct {
 void init_dxwifi_frame(dxwifi_frame* frame, size_t block_size);
 void teardown_dxwifi_frame(dxwifi_frame* frame);
 void construct_dxwifi_header(dxwifi_frame* frame);
-void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
-void construct_radiotap_header(ieee80211_radiotap_hdr* radiotap_hdr);
+uint8_t* construct_ieee80211_header(ieee80211_hdr* mac_hdr);
+uint8_t* construct_radiotap_header(ieee80211_radiotap_hdr* radiotap_hdr);
 
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
 void close_transmitter(dxwifi_transmitter* transmitter);

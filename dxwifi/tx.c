@@ -10,7 +10,6 @@
 #include <dxwifi/cli.h>
 #include <dxwifi/dxwifi.h>
 
-void log_and_exit(int status);
 void log_configuration(command_args* args);
 
 int main(int argc, char** argv) {
@@ -23,7 +22,7 @@ int main(int argc, char** argv) {
         .device     = DXWIFI_DFLT_DEVICE,
         .input_file = NULL,
         .verbosity  = 0,
-	.block_size = DXWIFI_DFLT_BLK_SIZE
+	    .block_size = DXWIFI_DFLT_BLK_SIZE
     };
 
     parse_args(argc, argv, &args);
