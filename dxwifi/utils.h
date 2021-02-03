@@ -6,6 +6,7 @@
 #define DXWIFI_UTIIITY_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -51,10 +52,23 @@ static void __assert_M(bool exit, const char* expr, const char* file, int line, 
 #define debug_assert_not_null(ptr) (void)0
 #define debug_assert_continue(expr, msg, ...) (void)0
 #else
-#define assert_debug(expr, msg, ...) assert_M(expr, msg, ##__VA_ARGS__)
+#define debug_assert(expr, msg, ...) assert_M(expr, msg, ##__VA_ARGS__)
 #define debug_assert_always(msg, ...) assert_always(msg, ##__VA_ARGS__)
 #define debug_assert_not_null(ptr) assert_not_null(ptr)
 #define debug_assert_continue(expr, msg, ...) assert_continue(expr, msg, ##__VA_ARGS__)
 #endif
+
+static int hexdump(uint8_t *ptr,int size) {
+    int i=0;
+
+    while (i<size) {
+        printf("%08x",i);
+        for(int j=0 ; j<16 && i<size ; i++,j++) {
+            printf(" %02x",*(ptr+i));
+        }
+        printf("\n");
+    }
+    return 0;
+}
 
 #endif // DXWIFI_UTIIITY_H

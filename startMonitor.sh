@@ -16,7 +16,7 @@ if [ $? -eq 0 ]; then
 	exit 0
 else
 	echo -e "Error, could not find device $dev"
-	echo -e "Usage: startMonitor.sh [device:mon0] [channel:3]"
+	echo -e "Usage: sudo startMonitor.sh [device:mon0] [channel:3]"
 	exit 1
 fi
 

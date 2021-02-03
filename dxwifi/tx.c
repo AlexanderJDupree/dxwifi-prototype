@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 
     init_transmitter(&transmitter, args.device);
 
-    status = transmit_file(&transmitter, fd);
+    status = transmit_file(&transmitter, fd, args.block_size);
 
     // Teardown resources - should do some final logging too
     close_transmitter(&transmitter);

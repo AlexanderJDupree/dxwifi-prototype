@@ -49,34 +49,40 @@
 #define DXWIFI_BLOCK_SIZE_MIN 0
 #define DXWIFI_BLOCK_SIZE_MAX 1500
 
-#define DXWIFI_HEADER_SIZE (sizeof(struct ieee80211_radiotap_header) + sizeof(struct ieee80211_hdr))
+#define DXWIFI_HEADER_SIZE (sizeof(ieee80211_radiotap_hdr) + sizeof(ieee80211_hdr))
+
+// Length of MAC address in bytes
+#define IEEE80211_MAC_ADDR_LEN 6
 
 /**
  *  Data structures
  */
 
+// Typedef for abbreviation
+typedef struct ieee80211_radiotap_header ieee80211_radiotap_hdr;
+
 /* Defined in github.com/torvalds/linux/include/linux/ieee80211.h */
-struct ieee80211_hdr {      /* ieee80211_hdr_3addr  */
+struct ieee80211_hdr_3addr { 
   uint16_t  frame_control;  /* __le16 */
   uint16_t  duration_id;    /* __le16 */
-  uint8_t   addr1[6];
-  uint8_t   addr2[6];
-  uint8_t   addr3[6];
+  uint8_t   addr1[IEEE80211_MAC_ADDR_LEN];
+  uint8_t   addr2[IEEE80211_MAC_ADDR_LEN];
+  uint8_t   addr3[IEEE80211_MAC_ADDR_LEN];
   uint16_t  seq_ctrl;       /*__le16 */
 } __attribute__ ((packed));
+typedef struct ieee80211_hdr_3addr ieee80211_hdr;
 
 typedef struct {
-    struct ieee80211_radiotap_header   *radiotap_hdr;   /* frame metadata           */
-    struct ieee80211_hdr               *mac_hdr;        /* link-layer header        */
-    uint8_t                            *payload;        /* packet data              */
-    //uint32_t                           *checksum;       // Do we calculate this? or does the driver append this to our packet?
+    ieee80211_radiotap_hdr  *radiotap_hdr;   /* frame metadata           */
+    ieee80211_hdr           *mac_hdr;        /* link-layer header        */
+    uint8_t                 *payload;        /* packet data              */
+    //uint32_t              *checksum;       // Do we calculate this? or does the driver append this to our packet?
 
-    uint8_t                            *__frame;        /* The actual data frame    */
+    uint8_t                 *__frame;        /* The actual data frame    */
 } dxwifi_frame;
 
 typedef struct {
     pcap_t* handle;         /* Session handle for PCAP  */
-    size_t  block_size;     /* transmission block size  */
 } dxwifi_transmitter;
 
 /**
@@ -85,10 +91,13 @@ typedef struct {
 
 void init_dxwifi_frame(dxwifi_frame* frame, size_t block_size);
 void teardown_dxwifi_frame(dxwifi_frame* frame);
+void construct_dxwifi_header(dxwifi_frame* frame);
+void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
+void construct_radiotap_header(ieee80211_radiotap_hdr* radiotap_hdr);
 
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
 void close_transmitter(dxwifi_transmitter* transmitter);
 
-int transmit_file(dxwifi_transmitter* transmitter, int fd);
+int transmit_file(dxwifi_transmitter* transmitter, int fd, size_t blocksize);
 
 #endif // DXWIFI_H
