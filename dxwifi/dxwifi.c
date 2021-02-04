@@ -10,17 +10,20 @@
 #include <dxwifi/utils.h>
 #include <dxwifi/dxwifi.h>
 
+#include <radiotap/platform.h>
 
-void init_dxwifi_frame(dxwifi_frame* frame, size_t block_size) {
-    // TODO: this is over-allocated. Need to tune it down to the actual frame length
-    frame->__frame = (uint8_t*) calloc(1, IEEE80211_MTU_MAX_LEN);
-    //frame->__frame = frame_buffer;
+void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
+
+    frame->__frame      = (uint8_t*) calloc(1, DXWIFI_TX_HEADER_SIZE + block_size + IEEE80211_FCS_SIZE);
+
+    frame->radiotap_hdr = (dxwifi_tx_radiotap_hdr*) frame->__frame;
+    frame->mac_hdr      = (ieee80211_hdr*) (frame->__frame + sizeof(dxwifi_tx_radiotap_hdr));
+    frame->payload      = frame->__frame + DXWIFI_TX_HEADER_SIZE;
 }
 
 
-void teardown_dxwifi_frame(dxwifi_frame* frame) {
-    // Deallocate frame buffer and point members to NULL
-    //free(frame->__frame);
+void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
+    free(frame->__frame);
     frame->__frame      = NULL;
     frame->radiotap_hdr = NULL;
     frame->mac_hdr      = NULL;
@@ -28,16 +31,27 @@ void teardown_dxwifi_frame(dxwifi_frame* frame) {
 }
 
 
-void construct_dxwifi_header(dxwifi_frame* frame) {
+void construct_dxwifi_header(dxwifi_tx_frame* frame) {
     assert_not_null(frame);
 
-    frame->radiotap_hdr = (ieee80211_radiotap_hdr*) frame->__frame;
+    construct_radiotap_header(frame->radiotap_hdr);
+    construct_ieee80211_header(frame->mac_hdr);
 
-    frame->mac_hdr = (ieee80211_hdr*) construct_radiotap_header(frame->radiotap_hdr);
-    frame->payload = construct_ieee80211_header(frame->mac_hdr);
 }
 
-uint8_t* construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
+
+void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr) {
+
+    // TODO programatically add fields
+    static const uint8_t u8aRadiotapHeader[] = {
+        0x00, 0x00, 0x0C, 0x00, 0x06, 0x80, 0x00, 0x00, 0x10, 0x0c, 0x08, 0x00 
+    };
+
+    memcpy(radiotap_hdr, u8aRadiotapHeader, sizeof(u8aRadiotapHeader));
+}
+
+
+void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
     #define WLAN_FC_TYPE_DATA	    2
     #define WLAN_FC_SUBTYPE_DATA    0
 
@@ -64,23 +78,8 @@ uint8_t* construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
 
     mac_hdr->seq_ctrl = 0;
 
-    return (uint8_t*)mac_hdr + sizeof(ieee80211_hdr);
-
     #undef WLAN_FC_TYPE_DATA
     #undef WLAN_FC_SUBTYPE_DATA
-}
-
-
-uint8_t* construct_radiotap_header(ieee80211_radiotap_hdr* radiotap_hdr) {
-
-    // TODO programatically add fields
-    static const uint8_t u8aRadiotapHeader[] = {
-        0x00, 0x00, 0x0C, 0x00, 0x06, 0x80, 0x00, 0x00, 0x10, 0x0c, 0x08, 0x00 
-    };
-
-    memcpy(radiotap_hdr, u8aRadiotapHeader, sizeof(u8aRadiotapHeader));
-
-    return (uint8_t*)radiotap_hdr + sizeof(u8aRadiotapHeader);
 }
 
 
@@ -94,6 +93,8 @@ void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
                             DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT, 
                             err_buff
                             );
+
+    // Hard assert here since if pcap fails we can't do anything
     assert_M(transmitter->handle != NULL, err_buff);
 }
 
@@ -107,28 +108,33 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
     debug_assert_not_null(transmit);
 
-#define DXWIFI_HEADER_SIZE (12 + sizeof(ieee80211_hdr) + 0 + 4)
-
     size_t nbytes   = 0;
     int status      = 0;
     int frame_count = 0;
-    dxwifi_frame data_frame = { NULL, NULL, NULL, NULL };
 
-    init_dxwifi_frame(&data_frame, blocksize);
+    dxwifi_tx_frame data_frame = { NULL, NULL, NULL, NULL };
 
-    // Prepare data, FEC Encode etc. 
+    init_dxwifi_tx_frame(&data_frame, blocksize);
+
     construct_dxwifi_header(&data_frame);
 
-    // TODO: poll fd to see if there's any data to even read
+    printf("\nDXWifi Header size: %ld\n", DXWIFI_TX_HEADER_SIZE);
+
+    // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
     while((nbytes = read(fd, data_frame.payload, blocksize)) > 0) {
+
         printf("nbytes: %ld\n", nbytes);
 
-        memset(data_frame.payload, 0xFF, nbytes);
+        // TODO Prepare data, FEC Encode etc. 
+        // TODO we may need to zero-extend the last block of data read if it's too small
 
-        printf("\nDXWifi Header size: %ld\n", DXWIFI_HEADER_SIZE);
-        hexdump(data_frame.__frame, DXWIFI_HEADER_SIZE + blocksize);
-        status = pcap_inject(transmit->handle, data_frame.__frame, DXWIFI_HEADER_SIZE + nbytes);
+        memset(data_frame.payload, 0xFF, nbytes); // Debuggging
+
+        hexdump(data_frame.__frame, DXWIFI_TX_HEADER_SIZE + blocksize + IEEE80211_FCS_SIZE);
+        status = pcap_inject(transmit->handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
+
         printf("Bytes read: %ld\n", nbytes);
+
         printf("Bytes sent: %d\n", status);
 
         debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
