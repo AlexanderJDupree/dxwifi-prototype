@@ -33,7 +33,6 @@
 
 
 #define assert_always(msg, ...) assert_M(true, msg, ...)
-#define assert_not_null(ptr) assert_M((ptr != NULL), "%s is NULL", #ptr)
 
 
 static void __assert_M(bool exit, const char* expr, const char* file, int line, const char* msg, ...) {
@@ -50,13 +49,13 @@ static void __assert_M(bool exit, const char* expr, const char* file, int line, 
 
 #ifdef NDEBUG
 #define debug_assert(expr, msg, ...) (void)0
+#define debug_assert_M(expr, msg, ...) (void)0
 #define debug_assert_always(msg, ...) (void)0
-#define debug_assert_not_null(ptr) (void)0
 #define debug_assert_continue(expr, msg, ...) (void)0
 #else
-#define debug_assert(expr, msg, ...) assert_M(expr, msg, ##__VA_ARGS__)
+#define debug_assert(expr) assert_M(expr, "")
+#define debug_assert_M(expr, msg, ...) assert_M(expr, msg, ##__VA_ARGS__)
 #define debug_assert_always(msg, ...) assert_always(msg, ##__VA_ARGS__)
-#define debug_assert_not_null(ptr) assert_not_null(ptr)
 #define debug_assert_continue(expr, msg, ...) assert_continue(expr, msg, ##__VA_ARGS__)
 #endif
 

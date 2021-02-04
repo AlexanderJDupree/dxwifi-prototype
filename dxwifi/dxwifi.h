@@ -72,7 +72,7 @@
 
 /**
  *  The radiotap header is used to communicate to the driver information about 
- *  out packet. The header data itself is discarded before transmission.
+ *  our packet. The header data itself is discarded before transmission.
  * 
  *  There are a lot of defined radiotap fields but most only make sense for 
  *  Rx packets. These are included becuase they help control injection and for 
@@ -118,7 +118,10 @@ typedef struct {
 
 
 typedef struct {
-    pcap_t* handle;                         /* Session handle for PCAP  */
+    pcap_t*   handle;                       /* Session handle for PCAP  */
+    uint8_t   rtap_flags;                   /* Radiotap flags           */
+    uint8_t   rtap_rate;                    /* Radiotap data rate       */
+    uint16_t  rtap_tx_flags;                /* Radiotap Tx flags        */
 } dxwifi_transmitter;
 
 
@@ -130,13 +133,13 @@ void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size);
 
 void teardown_dxwifi_tx_frame(dxwifi_tx_frame* frame);
 
-void construct_dxwifi_header(dxwifi_tx_frame* frame);
-
 void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
 
 void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags);
 
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
+
+void configure_radiotap_header(dxwifi_transmitter* transmit, uint8_t flags, uint8_t rate, uint16_t tx_flags);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
 

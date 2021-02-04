@@ -11,7 +11,9 @@
 #include <dxwifi/utils.h>
 #include <dxwifi/dxwifi.h>
 
+
 void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
+    debug_assert(frame);
 
     frame->__frame      = (uint8_t*) calloc(1, DXWIFI_TX_HEADER_SIZE + block_size + IEEE80211_FCS_SIZE);
 
@@ -22,6 +24,8 @@ void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
 
 
 void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
+    debug_assert(frame);
+
     free(frame->__frame);
     frame->__frame      = NULL;
     frame->radiotap_hdr = NULL;
@@ -30,16 +34,8 @@ void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
 }
 
 
-void construct_dxwifi_header(dxwifi_tx_frame* frame) {
-    assert_not_null(frame);
-
-    construct_radiotap_header(frame->radiotap_hdr, DXWIFI_DFLT_RADIOTAP_FLAGS, DXWIFI_BITRATE, DXWIFI_DFLT_RADIOTAP_TX_FLAGS);
-    construct_ieee80211_header(frame->mac_hdr);
-
-}
-
-
 void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
+    debug_assert(radiotap_hdr);
 
     radiotap_hdr->hdr.it_version    = IEEE80211_RADIOTAP_MAJOR_VERSION;
     radiotap_hdr->hdr.it_len        = htole16(sizeof(dxwifi_tx_radiotap_hdr));
@@ -52,6 +48,8 @@ void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t fla
 
 
 void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
+    debug_assert(mac_hdr);
+
     #define WLAN_FC_TYPE_DATA	    2
     #define WLAN_FC_SUBTYPE_DATA    0
 
@@ -88,6 +86,10 @@ void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
     char err_buff[PCAP_ERRBUF_SIZE];
 
+    transmitter->rtap_flags     = DXWIFI_DFLT_RADIOTAP_FLAGS;
+    transmitter->rtap_rate      = DXWIFI_DFLT_RADIOTAP_FLAGS;
+    transmitter->rtap_tx_flags  = DXWIFI_DFLT_RADIOTAP_FLAGS;
+
     transmitter->handle = pcap_open_live(
                             dev_name, 
                             SNAPLEN_MAX, 
@@ -100,17 +102,25 @@ void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
     assert_M(transmitter->handle != NULL, err_buff);
 }
 
+
+void configure_radiotap_header(dxwifi_transmitter* transmit, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
+    debug_assert(transmit);
+
+    transmit->rtap_flags    = flags;
+    transmit->rtap_rate     = rate;
+    transmit->rtap_tx_flags = tx_flags;
+
+}
+
+
 void close_transmitter(dxwifi_transmitter* transmitter) {
-    debug_assert_not_null(transmitter);
-    debug_assert_not_null(transmitter->handle);
+    debug_assert(transmitter && transmitter->handle);
     pcap_close(transmitter->handle);
 }
 
 
 int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
-    debug_assert_not_null(transmit);
-
-    // TODO All these print statements are going bye-bye
+    debug_assert(transmit && transmit->handle);
 
     size_t nbytes   = 0;
     int status      = 0;
@@ -120,7 +130,9 @@ int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
 
     init_dxwifi_tx_frame(&data_frame, blocksize);
 
-    construct_dxwifi_header(&data_frame);
+    construct_radiotap_header(data_frame.radiotap_hdr, transmit->rtap_flags, transmit->rtap_rate, transmit->rtap_tx_flags);
+
+    construct_ieee80211_header(data_frame.mac_hdr);
 
     printf("\nDXWifi Header size: %ld\n", DXWIFI_TX_HEADER_SIZE);
 
