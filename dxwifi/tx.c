@@ -55,12 +55,14 @@ void log_configuration(command_args* args) {
             "Device:        %s\n"
             "Input:         %s\n"
             "Data Rate:     %dMbps\n"
-            "RTAP flags:    0x%x\n",
+            "RTAP flags:    0x%x\n"
+            "RTAP Tx flags: 0x%x\n",
             args->verbosity,
             args->device,
             args->input_file,
             args->rtap_data_rate,
-            args->rtap_flags
+            args->rtap_flags,
+            args->rtap_tx_flags
         );
     }
 }
