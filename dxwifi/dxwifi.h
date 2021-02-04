@@ -21,7 +21,7 @@
 #define DXWIFI_VERSION_PATCH    0
 #define DXWIFI_VERSION_RELEASE  "alpha"
 
-#define STRINGIFY(x) STRINGIFY_(x)
+#define STRINGIFY(x)  STRINGIFY_(x)
 #define STRINGIFY_(x) #x
 
 #define DXWIFI_VERSION      STRINGIFY(DXWIFI_VERSION_MAJOR) "." \
@@ -35,11 +35,11 @@
  ***********************/
 
 // TODO make this build configurable 
-#define DXWIFI_DFLT_DEVICE 			            "mon0"
+#define DXWIFI_DFLT_DEVICE                  "mon0"
 #define DXWIFI_DFLT_INPUT_FILE              0
 #define DXWIFI_DFLT_VERBOSITY               0
-#define DXWIFI_DFLT_BLK_SIZE 			          256
-#define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 	20
+#define DXWIFI_DFLT_BLK_SIZE                256
+#define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT   20
 #define DXWIFI_DFLT_RADIOTAP_FLAGS          IEEE80211_RADIOTAP_F_FCS
 #define DXWIFI_DFLT_RADIOTAP_RATE           1
 #define DXWIFI_DFLT_RADIOTAP_TX_FLAGS       IEEE80211_RADIOTAP_F_TX_NOACK

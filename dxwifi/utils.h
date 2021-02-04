@@ -16,18 +16,18 @@
    for the second occurrence. */
 #define assert_M(expr, msg, ...)                                                \
     ((void) sizeof ((expr) ? 1 : 0), __extension__ ({                           \
-        if (expr)								                                \
-            ; /* empty */							                            \
-        else								                                    \
+        if (expr)                                                               \
+            ; /* empty */                                                       \
+        else                                                                    \
             __assert_M (true, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__);   \
     }))
 
 
 #define assert_continue(expr, msg, ...)                                         \
     ((void) sizeof ((expr) ? 1 : 0), __extension__ ({                           \
-        if (expr)								                                \
-            ; /* empty */							                            \
-        else								                                    \
+        if (expr)                                                               \
+            ; /* empty */                                                       \
+        else                                                                    \
             __assert_M (false, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__);  \
     }))
 
