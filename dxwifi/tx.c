@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
         .device         = DXWIFI_DFLT_DEVICE,
         .input_file     = DXWIFI_DFLT_INPUT_FILE,
         .verbosity      = DXWIFI_DFLT_VERBOSITY,
-	    .block_size     = DXWIFI_DFLT_BLK_SIZE,
+        .block_size     = DXWIFI_DFLT_BLK_SIZE,
         .rtap_flags     = DXWIFI_DFLT_RADIOTAP_FLAGS,
         .rtap_data_rate = DXWIFI_DFLT_RADIOTAP_RATE,
         .rtap_tx_flags  = DXWIFI_DFLT_RADIOTAP_TX_FLAGS
@@ -38,6 +38,8 @@ int main(int argc, char** argv) {
     }
 
     init_transmitter(&transmitter, args.device);
+
+    configure_radiotap_tx_fields(&transmitter, args.rtap_flags, args.rtap_data_rate, args.rtap_tx_flags);
 
     status = transmit_file(&transmitter, fd, args.block_size);
 
