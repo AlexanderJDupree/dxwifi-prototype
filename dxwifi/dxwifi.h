@@ -9,6 +9,7 @@
 #include <pcap.h>
 #include <radiotap/radiotap.h>
 
+#include <dxwifi/utils.h>
 #include <dxwifi/ieee80211.h>
 
 /************************
@@ -33,12 +34,19 @@
  *  Default Arguments
  ***********************/
 
+// TODO make this build configurable 
 #define DXWIFI_DFLT_DEVICE 			            "mon0"
+#define DXWIFI_DFLT_INPUT_FILE              0
+#define DXWIFI_DFLT_VERBOSITY               0
 #define DXWIFI_DFLT_BLK_SIZE 			          256
 #define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 	20
+#define DXWIFI_DFLT_RADIOTAP_FLAGS          IEEE80211_RADIOTAP_F_FCS
+#define DXWIFI_DFLT_RADIOTAP_RATE           1
+#define DXWIFI_DFLT_RADIOTAP_TX_FLAGS       IEEE80211_RADIOTAP_F_TX_NOACK
+
 
 /************************
- *  Limits
+ *  Limits/Flags
  ***********************/
 
 // https://www.tcpdump.org/manpages/pcap.3pcap.html
@@ -48,7 +56,14 @@
 #define DXWIFI_BLOCK_SIZE_MIN 0
 #define DXWIFI_BLOCK_SIZE_MAX 1500
 
+// rate defined Mbps
+#define DXWIFI_BITRATE 1
+
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
+
+#define DXWIFI_RADIOTAP_PRESENCE_BIT_FIELD  ( 0x1 << IEEE80211_RADIOTAP_FLAGS    \
+                                            | 0x1 << IEEE80211_RADIOTAP_RATE     \
+                                            | 0x1 << IEEE80211_RADIOTAP_TX_FLAGS)\
 
 
 /************************
@@ -56,8 +71,16 @@
  ***********************/
 
 /**
- * The radiotap header is used to communicate to the driver information about 
- * out packet. The header data itself is discarded before transmission.
+ *  The radiotap header is used to communicate to the driver information about 
+ *  out packet. The header data itself is discarded before transmission.
+ * 
+ *  There are a lot of defined radiotap fields but most only make sense for 
+ *  Rx packets. These are included becuase they help control injection and for 
+ *  DxWifi on the OreSat most of these are constant values as well
+ * 
+ *  NOTE: Before modifying this struct be sure to read https://www.radiotap.org/ 
+ *  for details. Fields are strictly ordered and aligned to natural boundries
+ * 
  */
 typedef struct  __attribute__((packed)) {
   struct ieee80211_radiotap_header  hdr;      /* packed radiotap header */
@@ -111,7 +134,7 @@ void construct_dxwifi_header(dxwifi_tx_frame* frame);
 
 void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
 
-void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr);
+void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags);
 
 void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
 

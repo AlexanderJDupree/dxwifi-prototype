@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /* The first occurrence of EXPR is not evaluated due to the sizeof,
    but will trigger any pedantic warnings masked by the __extension__
@@ -58,6 +59,7 @@ static void __assert_M(bool exit, const char* expr, const char* file, int line, 
 #define debug_assert_continue(expr, msg, ...) assert_continue(expr, msg, ##__VA_ARGS__)
 #endif
 
+
 static int hexdump(uint8_t *ptr,int size) {
     int i=0;
 
@@ -70,5 +72,25 @@ static int hexdump(uint8_t *ptr,int size) {
     }
     return 0;
 }
+
+static inline void set_bit32(uint32_t *word, uint32_t bit) {
+    *word |= (1 << bit);
+}
+
+
+static inline void clr_bit32(uint32_t *word, uint32_t bit) {
+    *word &= ~(1 << bit);
+}
+
+
+static inline void flip_bit32(uint32_t *word, uint32_t bit) {
+    *word ^= (1 << bit);
+}
+
+
+static inline uint32_t check_bit32(uint32_t *word, uint32_t bit) {
+    return *word & (1 << bit);
+}
+
 
 #endif // DXWIFI_UTIIITY_H

@@ -6,11 +6,10 @@
 #include <stdbool.h>
 
 #include <unistd.h>
+#include <endian.h>
 
 #include <dxwifi/utils.h>
 #include <dxwifi/dxwifi.h>
-
-#include <radiotap/platform.h>
 
 void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
 
@@ -34,20 +33,21 @@ void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
 void construct_dxwifi_header(dxwifi_tx_frame* frame) {
     assert_not_null(frame);
 
-    construct_radiotap_header(frame->radiotap_hdr);
+    construct_radiotap_header(frame->radiotap_hdr, DXWIFI_DFLT_RADIOTAP_FLAGS, DXWIFI_BITRATE, DXWIFI_DFLT_RADIOTAP_TX_FLAGS);
     construct_ieee80211_header(frame->mac_hdr);
 
 }
 
 
-void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr) {
+void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
 
-    // TODO programatically add fields
-    static const uint8_t u8aRadiotapHeader[] = {
-        0x00, 0x00, 0x0C, 0x00, 0x06, 0x80, 0x00, 0x00, 0x10, 0x0c, 0x08, 0x00 
-    };
+    radiotap_hdr->hdr.it_version    = IEEE80211_RADIOTAP_MAJOR_VERSION;
+    radiotap_hdr->hdr.it_len        = htole16(sizeof(dxwifi_tx_radiotap_hdr));
+    radiotap_hdr->hdr.it_present    = htole32(DXWIFI_RADIOTAP_PRESENCE_BIT_FIELD);
 
-    memcpy(radiotap_hdr, u8aRadiotapHeader, sizeof(u8aRadiotapHeader));
+    radiotap_hdr->flags     = flags;
+    radiotap_hdr->rate      = rate * 2;
+    radiotap_hdr->tx_flags  = tx_flags;
 }
 
 

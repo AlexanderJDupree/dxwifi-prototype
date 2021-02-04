@@ -19,10 +19,13 @@ int main(int argc, char** argv) {
     dxwifi_transmitter transmitter;
 
     command_args args = { 
-        .device     = DXWIFI_DFLT_DEVICE,
-        .input_file = NULL,
-        .verbosity  = 0,
-	    .block_size = DXWIFI_DFLT_BLK_SIZE
+        .device         = DXWIFI_DFLT_DEVICE,
+        .input_file     = DXWIFI_DFLT_INPUT_FILE,
+        .verbosity      = DXWIFI_DFLT_VERBOSITY,
+	    .block_size     = DXWIFI_DFLT_BLK_SIZE,
+        .rtap_flags     = DXWIFI_DFLT_RADIOTAP_FLAGS,
+        .rtap_data_rate = DXWIFI_DFLT_RADIOTAP_RATE,
+        .rtap_tx_flags  = DXWIFI_DFLT_RADIOTAP_TX_FLAGS
     };
 
     parse_args(argc, argv, &args);
@@ -50,10 +53,14 @@ void log_configuration(command_args* args) {
         printf(
             "Verbosity:     %d\n"
             "Device:        %s\n"
-            "Input:         %s\n",
+            "Input:         %s\n"
+            "Data Rate:     %dMbps\n"
+            "RTAP flags:    0x%x\n",
             args->verbosity,
             args->device,
-            args->input_file
+            args->input_file,
+            args->rtap_data_rate,
+            args->rtap_flags
         );
     }
 }

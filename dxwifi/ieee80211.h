@@ -12,10 +12,11 @@
 // https://networkengineering.stackexchange.com/questions/32970/what-is-the-802-11-mtu
 #define IEEE80211_MTU_MAX_LEN 2304
 
-// Length of MAC address in bytes
 #define IEEE80211_MAC_ADDR_LEN 6
 
 #define IEEE80211_FCS_SIZE 4
+
+#define IEEE80211_RADIOTAP_MAJOR_VERSION 0
 
 // Defined in github.com/torvalds/linux/include/linux/ieee80211.h 
 struct ieee80211_hdr_3addr { 

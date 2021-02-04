@@ -12,11 +12,16 @@
 #ifndef DXWIFI_CLI_H
 #define DXWIFI_CLI_H
 
+#include <stdint.h>
+
 typedef struct {
     const char* device;
     const char* input_file;
     int         verbosity;
     size_t      block_size;
+    uint8_t     rtap_flags;
+    uint8_t     rtap_data_rate;
+    uint16_t    rtap_tx_flags;
 } command_args;
 
 int parse_args(int argc, char** argv, command_args* out);

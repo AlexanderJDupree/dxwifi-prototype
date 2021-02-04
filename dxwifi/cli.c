@@ -8,6 +8,14 @@
 #include <dxwifi/cli.h>
 #include <dxwifi/dxwifi.h>
 
+#define DXWIFI_GROUP 0
+#define RADIOTAP_FLAGS_GROUP        1000
+#define RADIOTAP_RATE_GROUP         1500
+#define RADIOTAP_TX_FLAGS_GROUP     2000
+#define CLI_GROUP_LAST              RADIOTAP_TX_FLAGS_GROUP + 1
+
+#define GET_KEY(x, group) (x + group)
+
 const char* argp_program_version = DXWIFI_VERSION;
 
 const char* argp_program_bug_address = "TODO@gmail.com";
@@ -21,9 +29,23 @@ static char doc[] =
 
 /* Available command line options */
 static struct argp_option opts[] = {
-    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode" },
-    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file"},
-    { "verbose",    'v',    0,                      0,  "Verbosity level"},
+
+    // DxWifi configuration fields
+    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", 0},
+    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", 0},
+    { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
+
+    // Radiotap configuration fields
+    { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,       RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                RADIOTAP_FLAGS_GROUP },
+    { "short-preamble", GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE,  RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with short preamble",       RADIOTAP_FLAGS_GROUP },
+    { "wep",            GET_KEY(IEEE80211_RADIOTAP_F_WEP,       RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with WEP encryption",       RADIOTAP_FLAGS_GROUP },
+    { "frag",           GET_KEY(IEEE80211_RADIOTAP_F_FRAG,      RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with fragmentation",        RADIOTAP_FLAGS_GROUP },
+    { "nofcs",          GET_KEY(IEEE80211_RADIOTAP_F_FCS,       RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Frame does not includes FCS",    RADIOTAP_FLAGS_GROUP },
+
+    { "rate",           GET_KEY(IEEE80211_RADIOTAP_RATE,        RADIOTAP_RATE_GROUP),       0,  OPTION_NO_USAGE,  "Tx data rate (Mbps)",            RADIOTAP_RATE_GROUP },
+
+    { "ack",            GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK,  RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx expects an ACK frame",        RADIOTAP_TX_FLAGS_GROUP },
+
     {0} // Final zero field is required by argp
 }; 
 
@@ -53,6 +75,30 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     case 'v':
         args->verbosity++;
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_F_CFP, RADIOTAP_FLAGS_GROUP):
+        args->rtap_flags |= IEEE80211_RADIOTAP_F_CFP;
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE, RADIOTAP_FLAGS_GROUP):
+        args->rtap_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_F_WEP, RADIOTAP_FLAGS_GROUP):
+        args->rtap_flags |= IEEE80211_RADIOTAP_F_WEP;
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_F_FRAG, RADIOTAP_FLAGS_GROUP):
+        args->rtap_flags |= IEEE80211_RADIOTAP_F_FRAG;
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_F_FCS, RADIOTAP_FLAGS_GROUP):
+        args->rtap_flags &= ~(IEEE80211_RADIOTAP_F_FCS);
+        break;
+
+    case GET_KEY(IEEE80211_RADIOTAP_RATE, RADIOTAP_RATE_GROUP):
+        args->rtap_data_rate = atoi(arg); // TODO error handling
         break;
 
     case ARGP_KEY_ARG:
