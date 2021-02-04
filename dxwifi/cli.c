@@ -30,12 +30,11 @@ static char doc[] =
 /* Available command line options */
 static struct argp_option opts[] = {
 
-    // DxWifi configuration fields
-    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", 0},
-    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", 0},
-    { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
+    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", DXWIFI_GROUP},
+    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_GROUP},
 
-    // Radiotap configuration fields NOTE: Most of these fields are driver dependent or not supported by DxWifi, they're included here because things change
+    { 0, 0,  0,  0, "Radiotap Header Configuration Options", RADIOTAP_FLAGS_GROUP },
+    { 0, 0,  0,  0, "WARN: The following fields are driver dependent or may not be supported by DxWifi. Most of these fields may or not have any effect on packet injection", RADIOTAP_FLAGS_GROUP },
     { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                        RADIOTAP_FLAGS_GROUP },
     { "short-preamble", GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE,      RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with short preamble",               RADIOTAP_FLAGS_GROUP },
     { "wep",            GET_KEY(IEEE80211_RADIOTAP_F_WEP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with WEP encryption",               RADIOTAP_FLAGS_GROUP },
@@ -47,6 +46,9 @@ static struct argp_option opts[] = {
     { "ack",            GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK,      RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx expects an ACK frame",                RADIOTAP_TX_FLAGS_GROUP },
     { "sequence",       GET_KEY(IEEE80211_RADIOTAP_F_TX_NOSEQNO,    RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx includes preconfigured sequence id",  RADIOTAP_TX_FLAGS_GROUP },
     { "ordered",        GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK,      RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx should not be reordered",             RADIOTAP_TX_FLAGS_GROUP },
+
+    { 0, 0,  0,  0, "Help options", CLI_GROUP_LAST},
+    { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
 
     {0} // Final zero field is required by argp
 }; 
@@ -65,7 +67,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
     case 'b':
         args->block_size = atoi(arg);
         if( args->block_size < DXWIFI_BLOCK_SIZE_MIN || args->block_size > DXWIFI_BLOCK_SIZE_MAX) {
-            fprintf(stderr, 
+            argp_error(
+                state,
                 "blocksize of `%ld` not in range(%d,%d)\n", 
                 args->block_size, 
                 DXWIFI_BLOCK_SIZE_MIN,

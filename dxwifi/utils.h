@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-/* The first occurrence of EXPR is not evaluated due to the sizeof,
+/* The first occurrence of expr is not evaluated due to the sizeof,
    but will trigger any pedantic warnings masked by the __extension__
    for the second occurrence. */
 #define assert_M(expr, msg, ...)                                                \
@@ -30,6 +30,7 @@
         else								                                    \
             __assert_M (false, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__);  \
     }))
+
 
 #define assert_always(msg, ...) assert_M(true, msg, ...)
 #define assert_not_null(ptr) assert_M((ptr != NULL), "%s is NULL", #ptr)

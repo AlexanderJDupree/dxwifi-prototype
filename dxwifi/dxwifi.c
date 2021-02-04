@@ -55,6 +55,8 @@ void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
     #define WLAN_FC_TYPE_DATA	    2
     #define WLAN_FC_SUBTYPE_DATA    0
 
+    // TODO THIS IS ALL FUBAR AND NOT HOW IT SHOULD BE DONE!!!!!
+
     const uint8_t mac[6] = { 0x05, 0x03, 0x05, 0x03, 0x05, 0x03 };
 
     uint8_t frame_control[2];
@@ -94,7 +96,7 @@ void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
                             err_buff
                             );
 
-    // Hard assert here since if pcap fails we can't do anything
+    // Hard assert here because if pcap fails it's all FUBAR anyways
     assert_M(transmitter->handle != NULL, err_buff);
 }
 
@@ -107,6 +109,8 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 
 int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
     debug_assert_not_null(transmit);
+
+    // TODO All these print statements are going bye-bye
 
     size_t nbytes   = 0;
     int status      = 0;
