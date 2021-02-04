@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
     init_transmitter(&transmitter, args.device);
 
-    configure_radiotap_tx_fields(&transmitter, args.rtap_flags, args.rtap_data_rate, args.rtap_tx_flags);
+    //configure_radiotap_tx_fields(&transmitter, args.rtap_flags, args.rtap_data_rate, args.rtap_tx_flags);
 
     status = transmit_file(&transmitter, fd, args.block_size);
 

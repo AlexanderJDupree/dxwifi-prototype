@@ -34,7 +34,7 @@ static struct argp_option opts[] = {
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_GROUP},
 
     { 0, 0,  0,  0, "Radiotap Header Configuration Options", RADIOTAP_FLAGS_GROUP },
-    { 0, 0,  0,  0, "WARN: The following fields are driver dependent or may not be supported by DxWifi. Most of these fields may or not have any effect on packet injection", RADIOTAP_FLAGS_GROUP },
+    { 0, 0,  0,  0, "WARN: The following fields are driver dependent and/or may not be supported by DxWifi. Most of these fields may or not have any effect on packet injection", RADIOTAP_FLAGS_GROUP },
     { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                        RADIOTAP_FLAGS_GROUP },
     { "short-preamble", GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE,      RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with short preamble",               RADIOTAP_FLAGS_GROUP },
     { "wep",            GET_KEY(IEEE80211_RADIOTAP_F_WEP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with WEP encryption",               RADIOTAP_FLAGS_GROUP },
