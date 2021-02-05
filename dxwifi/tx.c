@@ -23,39 +23,50 @@
 #define DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS        IEEE80211_RADIOTAP_F_TX_NOACK
 #define DXWIFI_TX_DFLT_VERBOSITY                DXWIFI_LOG_OFF
 
+typedef struct {
+    int file;
+    dxwifi_transmitter tx;
+} cli_args;
 
 void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
-int parse_args(int argc, char** argv, dxwifi_transmitter* out);
+int parse_args(int argc, char** argv, cli_args* out);
 
 
 int main(int argc, char** argv) {
 
     int status = 0;
-    dxwifi_transmitter transmitter = { 
-        .fd             = DXWIFI_TX_DFLT_FILE,
-        .device         = DXWIFI_TX_DFLT_DEVICE,
-        .verbosity      = DXWIFI_TX_DFLT_VERBOSITY,
-        .block_size     = DXWIFI_TX_DFLT_BLK_SIZE,
-        .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
-        .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
-        .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS
+
+    cli_args args = {
+        .file               = DXWIFI_TX_DFLT_FILE,
+        .tx = {
+            .device         = DXWIFI_TX_DFLT_DEVICE,
+            .verbosity      = DXWIFI_TX_DFLT_VERBOSITY,
+            .block_size     = DXWIFI_TX_DFLT_BLK_SIZE,
+            .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
+            .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
+            .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS
+        }
     };
+    dxwifi_transmitter* transmitter = &args.tx;
 
-    parse_args(argc, argv, &transmitter);
 
-    init_logging(transmitter.verbosity, logger);
+    parse_args(argc, argv, &args);
 
-    init_transmitter(&transmitter);
+    init_logging(transmitter->verbosity, logger);
 
-    status = dxwifi_transmit(&transmitter);
+    init_transmitter(transmitter);
+
+    status = transmit_file(transmitter, args.file);
 
     // Teardown resources - should do some final logging too
-    close_transmitter(&transmitter);
+    close_transmitter(transmitter);
+    close(args.file);
     exit(status);
 }
 
 
 void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
+    // For now just log everything to stdout
     printf("[ %s ] : ", log_level_to_str(log_level));
     vprintf(fmt, args);
     printf("\n");
@@ -124,21 +135,21 @@ static struct argp_option opts[] = {
 static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     error_t status = 0;
-    dxwifi_transmitter* args = (dxwifi_transmitter*) state->input;
+    cli_args* args = (cli_args*) state->input;
 
     switch (key)
     {
     case 'd':
-        args->device = arg;
+        args->tx.device = arg;
         break;
 
     case 'b':
-        args->block_size = atoi(arg);
-        if( args->block_size < DXWIFI_BLOCK_SIZE_MIN || args->block_size > DXWIFI_BLOCK_SIZE_MAX) {
+        args->tx.block_size = atoi(arg);
+        if( args->tx.block_size < DXWIFI_BLOCK_SIZE_MIN || args->tx.block_size > DXWIFI_BLOCK_SIZE_MAX) {
             argp_error(
                 state,
                 "blocksize of `%ld` not in range(%d,%d)\n", 
-                args->block_size, 
+                args->tx.block_size, 
                 DXWIFI_BLOCK_SIZE_MIN,
                 DXWIFI_BLOCK_SIZE_MAX
                 );
@@ -147,50 +158,50 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         break;
 
     case 'v':
-        args->verbosity++;
+        args->tx.verbosity++;
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_CFP, RADIOTAP_FLAGS_GROUP):
-        args->rtap_flags |= IEEE80211_RADIOTAP_F_CFP;
+        args->tx.rtap_flags |= IEEE80211_RADIOTAP_F_CFP;
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE, RADIOTAP_FLAGS_GROUP):
-        args->rtap_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
+        args->tx.rtap_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_WEP, RADIOTAP_FLAGS_GROUP):
-        args->rtap_flags |= IEEE80211_RADIOTAP_F_WEP;
+        args->tx.rtap_flags |= IEEE80211_RADIOTAP_F_WEP;
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_FRAG, RADIOTAP_FLAGS_GROUP):
-        args->rtap_flags |= IEEE80211_RADIOTAP_F_FRAG;
+        args->tx.rtap_flags |= IEEE80211_RADIOTAP_F_FRAG;
         break;
 
     // Clear bit since default is on
     case GET_KEY(IEEE80211_RADIOTAP_F_FCS, RADIOTAP_FLAGS_GROUP):
-        args->rtap_flags &= ~(IEEE80211_RADIOTAP_F_FCS);
+        args->tx.rtap_flags &= ~(IEEE80211_RADIOTAP_F_FCS);
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_RATE, RADIOTAP_RATE_GROUP):
-        args->rtap_rate = atoi(arg); // TODO error handling
+        args->tx.rtap_rate = atoi(arg); // TODO error handling
         break;
 
     // Clear bit since default is on
     case GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK, RADIOTAP_TX_FLAGS_GROUP):
-        args->rtap_tx_flags &= ~(IEEE80211_RADIOTAP_F_TX_NOACK);
+        args->tx.rtap_tx_flags &= ~(IEEE80211_RADIOTAP_F_TX_NOACK);
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_TX_NOSEQNO, RADIOTAP_TX_FLAGS_GROUP):
-        args->rtap_tx_flags |= IEEE80211_RADIOTAP_F_TX_NOSEQNO;
+        args->tx.rtap_tx_flags |= IEEE80211_RADIOTAP_F_TX_NOSEQNO;
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_TX_ORDER, RADIOTAP_TX_FLAGS_GROUP):
-        args->rtap_tx_flags |= IEEE80211_RADIOTAP_F_TX_ORDER;
+        args->tx.rtap_tx_flags |= IEEE80211_RADIOTAP_F_TX_ORDER;
         break;
 
     case ARGP_KEY_ARG:
-        if(state->arg_num >= 1 || (args->fd = open(arg, O_RDONLY)) < 0) {
-            argp_error(state, "Failed to open file for reading: %s\n", arg);
+        if(state->arg_num >= 1 || (args->file = open(arg, O_RDONLY)) < 0) {
+            argp_error(state, "Failed to open file: %s", arg);
             argp_usage(state);
         }
         break;
@@ -211,7 +222,7 @@ static struct argp argparser = {
     .argp_domain    = 0
 };
 
-int parse_args(int argc, char** argv, dxwifi_transmitter* out) {
+int parse_args(int argc, char** argv, cli_args* out) {
 
     return argp_parse(&argparser, argc, argv, 0, 0, out);
 

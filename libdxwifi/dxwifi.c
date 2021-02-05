@@ -13,26 +13,7 @@
 #include <libdxwifi/details/logging.h>
 
 
-static void log_configuration(dxwifi_transmitter* tx) {
-    log_info(
-            "DxWifi Transmitter Initialized\n"
-            "\tVerbosity:     %s\n"
-            "\tDevice:        %s\n"
-            "\tFD:            %d\n"
-            "\tData Rate:     %dMbps\n"
-            "\tRTAP flags:    0x%x\n"
-            "\tRTAP Tx flags: 0x%x",
-            log_level_to_str(tx->verbosity),
-            tx->device,
-            tx->fd,
-            tx->rtap_rate,
-            tx->rtap_flags,
-            tx->rtap_tx_flags
-    );
-}
-
-
-void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
+static void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
     debug_assert(frame);
 
     frame->__frame      = (uint8_t*) calloc(1, DXWIFI_TX_HEADER_SIZE + block_size + IEEE80211_FCS_SIZE);
@@ -43,7 +24,7 @@ void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
 }
 
 
-void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
+static void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
     debug_assert(frame);
 
     free(frame->__frame);
@@ -54,7 +35,7 @@ void teardown_dxwifi_frame(dxwifi_tx_frame* frame) {
 }
 
 
-void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
+static void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
     debug_assert(radiotap_hdr);
 
     radiotap_hdr->hdr.it_version    = IEEE80211_RADIOTAP_MAJOR_VERSION;
@@ -70,7 +51,7 @@ void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t fla
 }
 
 
-void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
+static void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
     debug_assert(mac_hdr);
 
     #define WLAN_FC_TYPE_DATA	    2
@@ -106,6 +87,28 @@ void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
 }
 
 
+static void log_configuration(const dxwifi_transmitter* tx) {
+    log_info(
+            "DxWifi Transmitter Initialized\n"
+            "\tVerbosity:     %s\n"
+            "\tDevice:        %s\n"
+            "\tData Rate:     %dMbps\n"
+            "\tRTAP flags:    0x%x\n"
+            "\tRTAP Tx flags: 0x%x",
+            log_level_to_str(tx->verbosity),
+            tx->device,
+            tx->rtap_rate,
+            tx->rtap_flags,
+            tx->rtap_tx_flags
+    );
+}
+
+static void log_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
+    log_debug("Frame: %d - (Bytes Read, Bytes Sent) = (%ld, %ld)", frame_count, bytes_read, bytes_sent);
+    log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
+}
+
+
 void init_transmitter(dxwifi_transmitter* tx) {
     debug_assert(tx);
 
@@ -129,14 +132,14 @@ void init_transmitter(dxwifi_transmitter* tx) {
 
 void close_transmitter(dxwifi_transmitter* transmitter) {
     debug_assert(transmitter && transmitter->__handle);
+
     pcap_close(transmitter->__handle);
-    close(transmitter->fd);
 
     log_info("DxWifi Transmitter closed");
 }
 
 
-int dxwifi_transmit(dxwifi_transmitter* transmit) {
+int transmit_file(dxwifi_transmitter* transmit, int fd) {
     debug_assert(transmit && transmit->__handle);
 
     size_t blocksize    = transmit->block_size;
@@ -153,11 +156,12 @@ int dxwifi_transmit(dxwifi_transmitter* transmit) {
     construct_ieee80211_header(data_frame.mac_hdr);
 
     // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
-    while((nbytes = read(transmit->fd, data_frame.payload, transmit->block_size)) > 0) {
+    while((nbytes = read(fd, data_frame.payload, transmit->block_size)) > 0) {
 
-        log_hexdump(data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
         status = pcap_inject(transmit->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
+
+        log_stats(&data_frame, nbytes, status, frame_count);
 
         debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
 

@@ -57,7 +57,7 @@ void log_hexdump(uint8_t* data, int size) {
         int nbytes      = 0;
         int location    = 0;
 
-        char temp[17];
+        char temp[16];
         char formatted_str[BUFSIZ];
 
         formatted_str[location++] = '\n';

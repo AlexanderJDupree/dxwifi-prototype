@@ -99,8 +99,12 @@ typedef struct {
 } dxwifi_tx_frame;
 
 
+/**
+ * The transmitter is responsible for handling file transmission. It is the 
+ * user's responsibility to fill the fields with the correct data they want 
+ * for their transmission
+ */
 typedef struct {
-    int         fd;                           /* File descriptor          */
     const char* device;                       /* 802.11 interface name    */
     int         verbosity;                    /* Verbosity level          */
     size_t      block_size;                   /* Size in bytes to read    */
@@ -116,17 +120,9 @@ typedef struct {
  *  Functions
  ***********************/
 
-int dxwifi_transmit(dxwifi_transmitter* transmitter);
-
-void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size);
-
-void teardown_dxwifi_tx_frame(dxwifi_tx_frame* frame);
-
-void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
-
-void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags);
-
 void init_transmitter(dxwifi_transmitter* transmitter);
+
+int transmit_file(dxwifi_transmitter* transmitter, int fd);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
 
