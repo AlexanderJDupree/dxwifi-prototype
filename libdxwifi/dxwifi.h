@@ -3,8 +3,8 @@
  */
 
 
-#ifndef DXWIFI_H
-#define DXWIFI_H
+#ifndef LIBDXWIFI_H
+#define LIBDXWIFI_H
 
 #include <pcap.h>
 
@@ -29,35 +29,17 @@
 
 
 /************************
- *  Default Arguments
- ***********************/
-
-// TODO make this build configurable and move to application code
-#define DXWIFI_DFLT_FILE                    0
-#define DXWIFI_DFLT_DEVICE                  "mon0"
-#define DXWIFI_DFLT_INPUT_FILE              0
-#define DXWIFI_DFLT_VERBOSITY               0
-#define DXWIFI_DFLT_BLK_SIZE                256
-#define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT   20
-
-#define DXWIFI_TX_DFLT_RADIOTAP_FLAGS          IEEE80211_RADIOTAP_F_FCS
-#define DXWIFI_TX_DFLT_RADIOTAP_RATE           1
-#define DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS       IEEE80211_RADIOTAP_F_TX_NOACK
-
-
-/************************
- *  Limits/Flags
+ *  Constants
  ***********************/
 
 // https://www.tcpdump.org/manpages/pcap.3pcap.html
 #define SNAPLEN_MAX 65535
 
-// TODO this were defined arbitrarily. Needs review
+// TODO this was defined arbitrarily. Needs review
 #define DXWIFI_BLOCK_SIZE_MIN 0
 #define DXWIFI_BLOCK_SIZE_MAX 1500
 
-// rate defined Mbps
-#define DXWIFI_BITRATE 1
+#define DXWIFI_PACKET_BUFFER_TIMEOUT    20
 
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
 
@@ -150,4 +132,4 @@ void close_transmitter(dxwifi_transmitter* transmitter);
 
 
 
-#endif // DXWIFI_H
+#endif // LIBDXWIFI_H

@@ -25,8 +25,8 @@
  * 
  */
 
-#ifndef DXWIFI_IEEE80211_H
-#define DXWIFI_IEEE80211_H
+#ifndef LIBDXWIFI_IEEE80211_H
+#define LIBDXWIFI_IEEE80211_H
 
 #include <endian.h>
 #include <stdint.h>
@@ -386,4 +386,4 @@ enum ieee80211_radiotap_zero_len_psdu_type {
     IEEE80211_RADIOTAP_ZERO_LEN_PSDU_VENDOR			= 0xff,
 };
 
-#endif // DXWIFI_IEEE80211_H
+#endif // LIBDXWIFI_IEEE80211_H

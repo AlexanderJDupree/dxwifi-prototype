@@ -2,8 +2,8 @@
  * DxWifi collection of utility macros/functions
  */
 
-#ifndef DXWIFI_UTIIITY_H
-#define DXWIFI_UTIIITY_H
+#ifndef LIBDXWIFI_UTILITY_H
+#define LIBDXWIFI_UTILITY_H
 
 #include <stdio.h>
 #include <stdint.h>
@@ -93,4 +93,4 @@ static inline uint32_t check_bit32(uint32_t *word, uint32_t bit) {
 }
 
 
-#endif // DXWIFI_UTIIITY_H
+#endif // LIBDXWIFI_UTIIITY_H

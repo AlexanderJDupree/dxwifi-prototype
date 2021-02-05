@@ -3,7 +3,6 @@ project(dxwifi)
 
 add_executable(tx
                tx.c
-               cli.c
                )
 
 target_link_libraries(tx libdxwifi)

@@ -4,8 +4,9 @@ project(libdxwifi)
 # Add new files here!
 add_library(libdxwifi STATIC 
             dxwifi.c
+            ${PROJECT_SOURCE_DIR}/details/logging.c
             )   
 
-set_target_properties(libdxwifi PROPERTIES COMPILE_FLAGS "-Wall -Wextra")
+set_target_properties(libdxwifi PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Wno-unused-function")
 
 target_link_libraries(libdxwifi pcap)
