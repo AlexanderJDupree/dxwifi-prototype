@@ -8,14 +8,15 @@
 #include <unistd.h>
 #include <endian.h>
 
-#include <dxwifi/utils.h>
-#include <dxwifi/dxwifi.h>
+#include <libdxwifi/dxwifi.h>
+#include <libdxwifi/details/utils.h>
 
 
 void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
     debug_assert(frame);
 
     frame->__frame      = (uint8_t*) calloc(1, DXWIFI_TX_HEADER_SIZE + block_size + IEEE80211_FCS_SIZE);
+    debug_assert_always("test");
 
     frame->radiotap_hdr = (dxwifi_tx_radiotap_hdr*) frame->__frame;
     frame->mac_hdr      = (ieee80211_hdr*) (frame->__frame + sizeof(dxwifi_tx_radiotap_hdr));
@@ -39,7 +40,7 @@ void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t fla
 
     radiotap_hdr->hdr.it_version    = IEEE80211_RADIOTAP_MAJOR_VERSION;
     radiotap_hdr->hdr.it_len        = htole16(sizeof(dxwifi_tx_radiotap_hdr));
-    radiotap_hdr->hdr.it_present    = htole32(DXWIFI_RADIOTAP_PRESENCE_BIT_FIELD);
+    radiotap_hdr->hdr.it_present    = htole32(DXWIFI_TX_RADIOTAP_PRESENCE_BIT_FIELD);
 
     radiotap_hdr->flags     = flags;
     radiotap_hdr->rate      = rate * 2;
@@ -83,48 +84,55 @@ void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
 }
 
 
-void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name) {
+void init_transmitter(dxwifi_transmitter* tx) {
+    debug_assert(tx);
+
     char err_buff[PCAP_ERRBUF_SIZE];
 
-    transmitter->rtap_flags     = DXWIFI_DFLT_RADIOTAP_FLAGS;
-    transmitter->rtap_rate      = DXWIFI_DFLT_RADIOTAP_FLAGS;
-    transmitter->rtap_tx_flags  = DXWIFI_DFLT_RADIOTAP_FLAGS;
-
-    transmitter->handle = pcap_open_live(
-                            dev_name, 
-                            SNAPLEN_MAX, 
-                            true, 
-                            DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT, 
-                            err_buff
-                            );
+    tx->__handle = pcap_open_live(
+                        tx->device, 
+                        SNAPLEN_MAX, 
+                        true, 
+                        DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT, 
+                        err_buff
+                    );
 
     // Hard assert here because if pcap fails it's all FUBAR anyways
-    assert_M(transmitter->handle != NULL, err_buff);
-}
+    assert_M(tx->__handle != NULL, err_buff);
 
-
-void configure_radiotap_header(dxwifi_transmitter* transmit, uint8_t flags, uint8_t rate, uint16_t tx_flags) {
-    debug_assert(transmit);
-
-    transmit->rtap_flags    = flags;
-    transmit->rtap_rate     = rate;
-    transmit->rtap_tx_flags = tx_flags;
-
+    if (tx->verbosity > 0) {
+        printf(
+            "Verbosity:     %d\n"
+            "Device:        %s\n"
+            "FD:            %d\n"
+            "Data Rate:     %dMbps\n"
+            "RTAP flags:    0x%x\n"
+            "RTAP Tx flags: 0x%x\n",
+            tx->verbosity,
+            tx->device,
+            tx->fd,
+            tx->rtap_rate,
+            tx->rtap_flags,
+            tx->rtap_tx_flags
+        );
+    }
 }
 
 
 void close_transmitter(dxwifi_transmitter* transmitter) {
-    debug_assert(transmitter && transmitter->handle);
-    pcap_close(transmitter->handle);
+    debug_assert(transmitter && transmitter->__handle);
+    pcap_close(transmitter->__handle);
+    close(transmitter->fd);
 }
 
 
-int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
-    debug_assert(transmit && transmit->handle);
+int dxwifi_transmit(dxwifi_transmitter* transmit) {
+    debug_assert(transmit && transmit->__handle);
 
-    size_t nbytes   = 0;
-    int status      = 0;
-    int frame_count = 0;
+    size_t blocksize    = transmit->block_size;
+    size_t nbytes       = 0;
+    int status          = 0;
+    int frame_count     = 0;
 
     dxwifi_tx_frame data_frame = { NULL, NULL, NULL, NULL };
 
@@ -137,7 +145,7 @@ int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
     printf("\nDXWifi Header size: %ld\n", DXWIFI_TX_HEADER_SIZE);
 
     // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
-    while((nbytes = read(fd, data_frame.payload, blocksize)) > 0) {
+    while((nbytes = read(transmit->fd, data_frame.payload, transmit->block_size)) > 0) {
 
         printf("nbytes: %ld\n", nbytes);
 
@@ -147,7 +155,7 @@ int transmit_file(dxwifi_transmitter* transmit, int fd, size_t blocksize) {
         memset(data_frame.payload, 0xFF, nbytes); // Debuggging
 
         hexdump(data_frame.__frame, DXWIFI_TX_HEADER_SIZE + blocksize + IEEE80211_FCS_SIZE);
-        status = pcap_inject(transmit->handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
+        status = pcap_inject(transmit->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
         printf("Bytes read: %ld\n", nbytes);
 

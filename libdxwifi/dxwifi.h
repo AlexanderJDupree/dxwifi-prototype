@@ -7,10 +7,8 @@
 #define DXWIFI_H
 
 #include <pcap.h>
-#include <radiotap/radiotap.h>
 
-#include <dxwifi/utils.h>
-#include <dxwifi/ieee80211.h>
+#include <libdxwifi/details/ieee80211.h>
 
 /************************
  *  Versioning
@@ -34,15 +32,17 @@
  *  Default Arguments
  ***********************/
 
-// TODO make this build configurable 
+// TODO make this build configurable and move to application code
+#define DXWIFI_DFLT_FILE                    0
 #define DXWIFI_DFLT_DEVICE                  "mon0"
 #define DXWIFI_DFLT_INPUT_FILE              0
 #define DXWIFI_DFLT_VERBOSITY               0
 #define DXWIFI_DFLT_BLK_SIZE                256
 #define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT   20
-#define DXWIFI_DFLT_RADIOTAP_FLAGS          IEEE80211_RADIOTAP_F_FCS
-#define DXWIFI_DFLT_RADIOTAP_RATE           1
-#define DXWIFI_DFLT_RADIOTAP_TX_FLAGS       IEEE80211_RADIOTAP_F_TX_NOACK
+
+#define DXWIFI_TX_DFLT_RADIOTAP_FLAGS          IEEE80211_RADIOTAP_F_FCS
+#define DXWIFI_TX_DFLT_RADIOTAP_RATE           1
+#define DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS       IEEE80211_RADIOTAP_F_TX_NOACK
 
 
 /************************
@@ -61,9 +61,9 @@
 
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
 
-#define DXWIFI_RADIOTAP_PRESENCE_BIT_FIELD  ( 0x1 << IEEE80211_RADIOTAP_FLAGS    \
-                                            | 0x1 << IEEE80211_RADIOTAP_RATE     \
-                                            | 0x1 << IEEE80211_RADIOTAP_TX_FLAGS)\
+#define DXWIFI_TX_RADIOTAP_PRESENCE_BIT_FIELD ( 0x1 << IEEE80211_RADIOTAP_FLAGS    \
+                                              | 0x1 << IEEE80211_RADIOTAP_RATE     \
+                                              | 0x1 << IEEE80211_RADIOTAP_TX_FLAGS)\
 
 
 /************************
@@ -118,16 +118,23 @@ typedef struct {
 
 
 typedef struct {
-    pcap_t*   handle;                       /* Session handle for PCAP  */
-    uint8_t   rtap_flags;                   /* Radiotap flags           */
-    uint8_t   rtap_rate;                    /* Radiotap data rate       */
-    uint16_t  rtap_tx_flags;                /* Radiotap Tx flags        */
+    int         fd;                           /* File descriptor          */
+    const char* device;                       /* 802.11 interface name    */
+    int         verbosity;                    /* Verbosity level          */
+    size_t      block_size;                   /* Size in bytes to read    */
+    uint8_t     rtap_flags;                   /* Radiotap flags           */
+    uint8_t     rtap_rate;                    /* Radiotap data rate       */
+    uint16_t    rtap_tx_flags;                /* Radiotap Tx flags        */
+
+    pcap_t*     __handle;                     /* Session handle for PCAP  */
 } dxwifi_transmitter;
 
 
 /************************
  *  Functions
  ***********************/
+
+int dxwifi_transmit(dxwifi_transmitter* transmitter);
 
 void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size);
 
@@ -137,13 +144,10 @@ void construct_ieee80211_header(ieee80211_hdr* mac_hdr);
 
 void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint8_t flags, uint8_t rate, uint16_t tx_flags);
 
-void init_transmitter(dxwifi_transmitter* transmitter, const char* dev_name);
-
-void configure_radiotap_header(dxwifi_transmitter* transmit, uint8_t flags, uint8_t rate, uint16_t tx_flags);
+void init_transmitter(dxwifi_transmitter* transmitter);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
 
-int transmit_file(dxwifi_transmitter* transmitter, int fd, size_t blocksize);
 
 
 #endif // DXWIFI_H

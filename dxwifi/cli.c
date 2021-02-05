@@ -5,8 +5,12 @@
 #include <argp.h>
 #include <stdlib.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <libdxwifi/dxwifi.h>
+
 #include <dxwifi/cli.h>
-#include <dxwifi/dxwifi.h>
 
 #define DXWIFI_GROUP 0
 #define RADIOTAP_FLAGS_GROUP        1000
@@ -56,7 +60,7 @@ static struct argp_option opts[] = {
 static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     error_t status = 0;
-    command_args* args = (command_args*) state->input;
+    dxwifi_transmitter* args = (dxwifi_transmitter*) state->input;
 
     switch (key)
     {
@@ -104,7 +108,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_RATE, RADIOTAP_RATE_GROUP):
-        args->rtap_data_rate = atoi(arg); // TODO error handling
+        args->rtap_rate = atoi(arg); // TODO error handling
         break;
 
     // Clear bit since default is on
@@ -121,10 +125,9 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         break;
 
     case ARGP_KEY_ARG:
-        if(state->arg_num >= 1) {
+        if(state->arg_num >= 1 || (args->fd = open(arg, O_RDONLY)) < 0) {
+            argp_error(state, "Failed to open file for reading: %s\n", arg);
             argp_usage(state);
-        } else {
-            args->input_file = arg;
         }
         break;
 
@@ -144,7 +147,7 @@ static struct argp argparser = {
     .argp_domain    = 0
 };
 
-int parse_args(int argc, char** argv, command_args* out) {
+int parse_args(int argc, char** argv, dxwifi_transmitter* out) {
 
     return argp_parse(&argparser, argc, argv, 0, 0, out);
 

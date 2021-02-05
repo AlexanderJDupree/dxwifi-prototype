@@ -1,3 +1,0 @@
-[submodule "radiotap"]
-	path = radiotap
-	url = git@github.com:AlexanderJDupree/radiotap-library.git
