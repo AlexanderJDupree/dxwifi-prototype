@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <endian.h>
 
+#include <arpa/inet.h>
+
 #include <libdxwifi/dxwifi.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/logging.h>
