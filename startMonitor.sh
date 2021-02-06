@@ -2,8 +2,6 @@
 # Simple script to enable monitor mode on a given interface
 # Defaults to enabling monitor mode on mon0 at Channel 3 and txpower of 20dBM
 # Must be run with sudo
-#
-# TODO add verbose flag, make script more robust
 
 set -e
 

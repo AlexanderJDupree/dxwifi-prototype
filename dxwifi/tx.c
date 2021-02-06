@@ -25,6 +25,7 @@
 
 typedef struct {
     int file;
+    int verbosity;
     dxwifi_transmitter tx;
 } cli_args;
 
@@ -38,9 +39,9 @@ int main(int argc, char** argv) {
 
     cli_args args = {
         .file               = DXWIFI_TX_DFLT_FILE,
+        .verbosity          = DXWIFI_TX_DFLT_VERBOSITY,
         .tx = {
             .device         = DXWIFI_TX_DFLT_DEVICE,
-            .verbosity      = DXWIFI_TX_DFLT_VERBOSITY,
             .block_size     = DXWIFI_TX_DFLT_BLK_SIZE,
             .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
             .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
@@ -71,7 +72,7 @@ int main(int argc, char** argv) {
 
     parse_args(argc, argv, &args);
 
-    init_logging(transmitter->verbosity, logger);
+    init_logging(args.verbosity, logger);
 
     init_transmitter(transmitter);
 
@@ -187,7 +188,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         break;
 
     case 'v':
-        args->tx.verbosity++;
+        args->verbosity++;
         break;
 
     case GET_KEY(1, MAC_ADDRESS_GROUP):

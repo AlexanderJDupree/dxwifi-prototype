@@ -108,7 +108,6 @@ typedef struct {
  */
 typedef struct {
     const char* device;                         /* 802.11 interface name    */
-    int         verbosity;                      /* Verbosity level          */
     size_t      block_size;                     /* Size in bytes to read    */
 
     uint8_t     rtap_flags;                     /* Radiotap flags           */
@@ -137,6 +136,14 @@ typedef struct {
     pcap_t*     __handle;                       /* Session handle for PCAP  */
 } dxwifi_transmitter;
 
+/**
+ * The receiver is responsible for packet capture and unpacking the original
+ * data.
+ */
+typedef struct {
+  const char* device;
+
+} dxwifi_receiver;
 
 /************************
  *  Functions
