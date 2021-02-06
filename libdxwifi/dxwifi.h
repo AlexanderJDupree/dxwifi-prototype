@@ -105,12 +105,17 @@ typedef struct {
  * for their transmission
  */
 typedef struct {
-    const char* device;                       /* 802.11 interface name    */
-    int         verbosity;                    /* Verbosity level          */
-    size_t      block_size;                   /* Size in bytes to read    */
-    uint8_t     rtap_flags;                   /* Radiotap flags           */
-    uint8_t     rtap_rate;                    /* Radiotap data rate       */
-    uint16_t    rtap_tx_flags;                /* Radiotap Tx flags        */
+    const char* device;                         /* 802.11 interface name    */
+    int         verbosity;                      /* Verbosity level          */
+    size_t      block_size;                     /* Size in bytes to read    */
+
+    uint8_t     rtap_flags;                     /* Radiotap flags           */
+    uint8_t     rtap_rate;                      /* Radiotap data rate       */
+    uint16_t    rtap_tx_flags;                  /* Radiotap Tx flags        */
+
+    uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];  /* Destination              */
+    uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];  /* BSSID                    */
+    uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];  /* Source                   */
 
     pcap_t*     __handle;                     /* Session handle for PCAP  */
 } dxwifi_transmitter;

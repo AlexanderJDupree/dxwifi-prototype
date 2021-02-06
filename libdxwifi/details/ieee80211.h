@@ -30,6 +30,7 @@
 
 #include <endian.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 // https://networkengineering.stackexchange.com/questions/32970/what-is-the-802-11-mtu
 #define IEEE80211_MTU_MAX_LEN 2304
@@ -38,6 +39,7 @@
 
 #define IEEE80211_FCS_SIZE 4
 
+#define IEEE80211_PROTOCOL_VERSION 0
 #define IEEE80211_RADIOTAP_MAJOR_VERSION 0
 
 // Defined in github.com/torvalds/linux/include/linux/ieee80211.h 
@@ -76,8 +78,100 @@ struct ieee80211_radiotap_header {
     uint32_t it_present;
 } __attribute__((__packed__));
 
-/* version is always 0 */
-#define PKTHDR_RADIOTAP_VERSION	0
+
+enum ieee80211_fctl_masks {
+    IEEE80211_FCTL_VERS         = 0x0003,
+    IEEE80211_FCTL_FTYPE		= 0x000c,
+    IEEE80211_FCTL_STYPE		= 0x00f0,
+    IEEE80211_FCTL_TODS		    = 0x0100,
+    IEEE80211_FCTL_FROMDS		= 0x0200,
+    IEEE80211_FCTL_MOREFRAGS	= 0x0400,
+    IEEE80211_FCTL_RETRY		= 0x0800,
+    IEEE80211_FCTL_PM		    = 0x1000,
+    IEEE80211_FCTL_MOREDATA		= 0x2000,
+    IEEE80211_FCTL_PROTECTED	= 0x4000,
+    IEEE80211_FCTL_ORDER		= 0x8000,
+    IEEE80211_FCTL_CTL_EXT		= 0x0f00
+};
+
+enum ieee80211_fctl_type {
+    IEEE80211_FTYPE_MGMT    = 0x00,
+    IEEE80211_FTYPE_CTL     = 0x04,
+    IEEE80211_FTYPE_DATA    = 0x08,
+    IEEE80211_FTYPE_EXT     = 0x0c
+};
+
+
+enum ieee80211_fctl_management_stype {
+    IEEE80211_STYPE_ASSOC_REQ       = 0x0000,
+    IEEE80211_STYPE_ASSOC_RESP      = 0x0010,
+    IEEE80211_STYPE_REASSOC_REQ	    = 0x0020,
+    IEEE80211_STYPE_REASSOC_RESP    = 0x0030,
+    IEEE80211_STYPE_PROBE_REQ       = 0x0040,
+    IEEE80211_STYPE_PROBE_RESP      = 0x0050,
+    IEEE80211_STYPE_BEACON          = 0x0080,
+    IEEE80211_STYPE_ATIM            = 0x0090,
+    IEEE80211_STYPE_DISASSOC        = 0x00A0,
+    IEEE80211_STYPE_AUTH            = 0x00B0,
+    IEEE80211_STYPE_DEAUTH          = 0x00C0,
+    IEEE80211_STYPE_ACTION          = 0x00D0
+};
+
+
+enum ieee80211_fctl_control_stype {
+    IEEE80211_STYPE_CTL_EXT     = 0x0060,
+    IEEE80211_STYPE_BACK_REQ    = 0x0080,
+    IEEE80211_STYPE_BACK        = 0x0090,
+    IEEE80211_STYPE_PSPOLL      = 0x00A0,
+    IEEE80211_STYPE_RTS         = 0x00B0,
+    IEEE80211_STYPE_CTS         = 0x00C0,
+    IEEE80211_STYPE_ACK         = 0x00D0,
+    IEEE80211_STYPE_CFEND       = 0x00E0,
+    IEEE80211_STYPE_CFENDACK    = 0x00F0
+};
+
+
+enum ieee80211_fctl_data_stype {
+    IEEE80211_STYPE_DATA                = 0x0000,
+    IEEE80211_STYPE_DATA_CFACK          = 0x0010,
+    IEEE80211_STYPE_DATA_CFPOLL         = 0x0020,
+    IEEE80211_STYPE_DATA_CFACKPOLL      = 0x0030,
+    IEEE80211_STYPE_NULLFUNC            = 0x0040,
+    IEEE80211_STYPE_CFACK               = 0x0050,
+    IEEE80211_STYPE_CFPOLL              = 0x0060,
+    IEEE80211_STYPE_CFACKPOLL           = 0x0070,
+    IEEE80211_STYPE_QOS_DATA            = 0x0080,
+    IEEE80211_STYPE_QOS_DATA_CFACK      = 0x0090,
+    IEEE80211_STYPE_QOS_DATA_CFPOLL     = 0x00A0,
+    IEEE80211_STYPE_QOS_DATA_CFACKPOLL  = 0x00B0,
+    IEEE80211_STYPE_QOS_NULLFUNC        = 0x00C0,
+    IEEE80211_STYPE_QOS_CFACK           = 0x00D0,
+    IEEE80211_STYPE_QOS_CFPOLL          = 0x00E0,
+    IEEE80211_STYPE_QOS_CFACKPOLL       = 0x00F0
+};
+
+typedef struct {
+
+    uint8_t                     protocol_version;
+
+    enum ieee80211_fctl_type    type;
+
+    union {
+        enum ieee80211_fctl_management_stype management;
+        enum ieee80211_fctl_control_stype    control;
+        enum ieee80211_fctl_data_stype       data;
+    } stype;
+
+    bool to_ds;
+    bool from_ds;
+    bool more_frag;
+    bool retry;
+    bool power_mgmt;
+    bool more_data;
+    bool wep;
+    bool order;
+
+} ieee80211_frame_control;
 
 /* see the radiotap website for the descriptions */
 enum ieee80211_radiotap_presence {

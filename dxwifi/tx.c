@@ -6,6 +6,7 @@
 #include <argp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -44,7 +45,11 @@ int main(int argc, char** argv) {
             .block_size     = DXWIFI_TX_DFLT_BLK_SIZE,
             .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
             .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
-            .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS
+            .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS,
+
+            .addr1 = { 0x05, 0x05, 0x05, 0x05, 0x05, 0x05 },
+            .addr2 = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA },
+            .addr3 = { 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00 }
         }
     };
     dxwifi_transmitter* transmitter = &args.tx;
@@ -88,9 +93,10 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  */
 
 #define DXWIFI_GROUP 0
-#define RADIOTAP_FLAGS_GROUP        1000
-#define RADIOTAP_RATE_GROUP         1500
-#define RADIOTAP_TX_FLAGS_GROUP     2000
+#define MAC_ADDRESS_GROUP            500
+#define RADIOTAP_FLAGS_GROUP        1500
+#define RADIOTAP_RATE_GROUP         2000
+#define RADIOTAP_TX_FLAGS_GROUP     2500
 #define CLI_GROUP_LAST              RADIOTAP_TX_FLAGS_GROUP + 1
 
 #define GET_KEY(x, group) (x + group)
@@ -112,6 +118,11 @@ static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", DXWIFI_GROUP},
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_GROUP},
 
+    { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_ADDRESS_GROUP },
+    { "desti",  GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
+    { "bssid",  GET_KEY(2, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)" },
+    { "source", GET_KEY(3, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (FF:00:FF:00:FF:00)" },
+
     { 0, 0,  0,  0, "Radiotap Header Configuration Options", RADIOTAP_FLAGS_GROUP },
     { 0, 0,  0,  0, "WARN: The following fields are driver dependent and/or may not be supported by DxWifi. Most of these fields may or not have any effect on packet injection", RADIOTAP_FLAGS_GROUP },
     { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                        RADIOTAP_FLAGS_GROUP },
@@ -131,6 +142,10 @@ static struct argp_option opts[] = {
 
     {0} // Final zero field is required by argp
 }; 
+
+static bool parse_mac_address(const char* arg, uint8_t* mac) {
+    return sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", mac, mac + 1, mac + 2, mac + 3, mac + 4, mac + 5) == 6;
+}
 
 static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
@@ -159,6 +174,30 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     case 'v':
         args->tx.verbosity++;
+        break;
+
+    case GET_KEY(1, MAC_ADDRESS_GROUP):
+        if( !parse_mac_address(arg, args->tx.addr1))
+        {
+            argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
+            argp_usage(state);
+        }
+        break;
+
+    case GET_KEY(2, MAC_ADDRESS_GROUP):
+        if( !parse_mac_address(arg, args->tx.addr2) )
+        {
+            argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
+            argp_usage(state);
+        }
+        break;
+
+    case GET_KEY(3, MAC_ADDRESS_GROUP):
+        if( !parse_mac_address(arg, args->tx.addr3) )
+        {
+            argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
+            argp_usage(state);
+        }
         break;
 
     case GET_KEY(IEEE80211_RADIOTAP_F_CFP, RADIOTAP_FLAGS_GROUP):

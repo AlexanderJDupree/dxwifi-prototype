@@ -51,39 +51,31 @@ static void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint
 }
 
 
-static void construct_ieee80211_header(ieee80211_hdr* mac_hdr) {
-    debug_assert(mac_hdr);
+static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_control fcntl, uint8_t* addr1, uint8_t* addr2, uint8_t* addr3 ) {
+    debug_assert(mac);
 
-    #define WLAN_FC_TYPE_DATA	    2
-    #define WLAN_FC_SUBTYPE_DATA    0
+    uint16_t frame_control = 0x00;
 
-    // TODO THIS IS ALL FUBAR AND NOT HOW IT SHOULD BE DONE!!!!!
+    set_bits16(&frame_control, IEEE80211_FCTL_VERS,     fcntl.protocol_version);
+    set_bits16(&frame_control, IEEE80211_FCTL_FTYPE,    fcntl.type);
+    set_bits16(&frame_control, IEEE80211_FCTL_STYPE,    fcntl.stype.data);
+    set_bits16(&frame_control, IEEE80211_FCTL_TODS,     (fcntl.to_ds      ? IEEE80211_FCTL_TODS       : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_FROMDS,   (fcntl.from_ds    ? IEEE80211_FCTL_FROMDS     : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_RETRY,    (fcntl.retry      ? IEEE80211_FCTL_RETRY      : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_PM,       (fcntl.power_mgmt ? IEEE80211_FCTL_PM         : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_MOREDATA, (fcntl.more_data  ? IEEE80211_FCTL_MOREDATA   : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_PROTECTED,(fcntl.wep        ? IEEE80211_FCTL_PROTECTED  : 0));
+    set_bits16(&frame_control, IEEE80211_FCTL_ORDER,    (fcntl.order      ? IEEE80211_FCTL_ORDER      : 0));
 
-    const uint8_t mac[6] = { 0x05, 0x03, 0x05, 0x03, 0x05, 0x03 };
+    mac->frame_control = frame_control;
 
-    uint8_t frame_control[2];
-    frame_control[0] = ((WLAN_FC_TYPE_DATA << 2) | (WLAN_FC_SUBTYPE_DATA << 4));
-    frame_control[1] = 0x02;
+    mac->duration_id = 0xffff;
 
-    memcpy(&mac_hdr->frame_control, frame_control, sizeof(uint16_t));
+    memcpy(mac->addr1, addr1, IEEE80211_MAC_ADDR_LEN);
+    memcpy(mac->addr2, addr2, IEEE80211_MAC_ADDR_LEN);
+    memcpy(mac->addr3, addr3, IEEE80211_MAC_ADDR_LEN);
 
-    mac_hdr->duration_id = 0xffff;
-
-    memset(&mac_hdr->addr1[0], 0, 6 * sizeof(uint8_t));
-    mac_hdr->addr1[0] = 0x01;
-    mac_hdr->addr1[1] = 0x02;
-
-    memset(&mac_hdr->addr3[0], 0, 6 * sizeof(uint8_t));
-    mac_hdr->addr3[1] = 0x05;
-    mac_hdr->addr3[3] = 0x07;
-
-
-    memcpy(&mac_hdr->addr2[0], mac, 6*sizeof(uint8_t));
-
-    mac_hdr->seq_ctrl = 0;
-
-    #undef WLAN_FC_TYPE_DATA
-    #undef WLAN_FC_SUBTYPE_DATA
+    mac->seq_ctrl = 0;
 }
 
 
@@ -94,7 +86,7 @@ static void log_configuration(const dxwifi_transmitter* tx) {
             "\tDevice:        %s\n"
             "\tData Rate:     %dMbps\n"
             "\tRTAP flags:    0x%x\n"
-            "\tRTAP Tx flags: 0x%x",
+            "\tRTAP Tx flags: 0x%x\n",
             log_level_to_str(tx->verbosity),
             tx->device,
             tx->rtap_rate,
@@ -139,29 +131,44 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 }
 
 
-int transmit_file(dxwifi_transmitter* transmit, int fd) {
-    debug_assert(transmit && transmit->__handle);
+int transmit_file(dxwifi_transmitter* tx, int fd) {
+    debug_assert(tx && tx->__handle);
 
-    size_t blocksize    = transmit->block_size;
+    size_t blocksize    = tx->block_size;
     size_t nbytes       = 0;
     int status          = 0;
     int frame_count     = 0;
 
-    dxwifi_tx_frame data_frame = { NULL, NULL, NULL, NULL };
+    dxwifi_tx_frame data_frame;
+
+    // TODO make frame control use configurable
+    ieee80211_frame_control fcntl = {
+        .protocol_version   = IEEE80211_PROTOCOL_VERSION,
+        .type               = IEEE80211_FTYPE_DATA,
+        .stype              = { IEEE80211_STYPE_DATA },
+        .to_ds              = false,
+        .from_ds            = true,
+        .more_frag          = false,
+        .retry              = false,
+        .power_mgmt         = false,
+        .more_data          = true, 
+        .wep                = false,
+        .order              = false
+    };
 
     init_dxwifi_tx_frame(&data_frame, blocksize);
 
-    construct_radiotap_header(data_frame.radiotap_hdr, transmit->rtap_flags, transmit->rtap_rate, transmit->rtap_tx_flags);
+    construct_radiotap_header(data_frame.radiotap_hdr, tx->rtap_flags, tx->rtap_rate, tx->rtap_tx_flags);
 
-    construct_ieee80211_header(data_frame.mac_hdr);
+    construct_ieee80211_header(data_frame.mac_hdr, fcntl, tx->addr1, tx->addr2, tx->addr3);
 
     // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
-    while((nbytes = read(fd, data_frame.payload, transmit->block_size)) > 0) {
+    while((nbytes = read(fd, data_frame.payload, tx->block_size)) > 0) {
 
 
-        status = pcap_inject(transmit->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
+        status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
-        log_stats(&data_frame, nbytes, status, frame_count);
+        log_stats(&data_frame, nbytes, status, frame_count + 1);
 
         debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
 
