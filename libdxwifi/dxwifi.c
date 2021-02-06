@@ -152,7 +152,6 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
     // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
     while((nbytes = read(fd, data_frame.payload, tx->block_size)) > 0) {
 
-
         status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
         log_stats(&data_frame, nbytes, status, frame_count + 1);
