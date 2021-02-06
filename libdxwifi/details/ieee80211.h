@@ -28,12 +28,13 @@
 #ifndef LIBDXWIFI_IEEE80211_H
 #define LIBDXWIFI_IEEE80211_H
 
-#include <endian.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 // https://networkengineering.stackexchange.com/questions/32970/what-is-the-802-11-mtu
 #define IEEE80211_MTU_MAX_LEN 2304
+
+#define IEEE80211_MAX_FRAG_THRESHOLD 2352
 
 #define IEEE80211_MAC_ADDR_LEN 6
 
@@ -150,26 +151,33 @@ enum ieee80211_fctl_data_stype {
     IEEE80211_STYPE_QOS_CFACKPOLL       = 0x00F0
 };
 
+/**
+ * The frame control field in the MAC header defines what type of frame is being
+ * sent (i.e. control/management/data) and provides control information about 
+ * that field. The ieee80211_frame_control struct is an abstraction to allow 
+ * a user to control each field individually without worrying about endianess
+ * or bit fields. 
+ */
 typedef struct {
 
-    uint8_t                     protocol_version;
+    uint8_t protocol_version;           /* Protocol version is always zero  */
 
-    enum ieee80211_fctl_type    type;
+    enum ieee80211_fctl_type type;      /* Frame data type                  */
 
     union {
         enum ieee80211_fctl_management_stype management;
         enum ieee80211_fctl_control_stype    control;
         enum ieee80211_fctl_data_stype       data;
-    } stype;
+    } stype;    /* subtypes are dependent on the frame type */
 
-    bool to_ds;
-    bool from_ds;
-    bool more_frag;
-    bool retry;
-    bool power_mgmt;
-    bool more_data;
-    bool wep;
-    bool order;
+    bool to_ds;                         /* To distribution system?          */
+    bool from_ds;                       /* From a distribution system?      */
+    bool more_frag;                     /* More fragment data follows?      */
+    bool retry;                         /* Is this fram a retransmission?   */
+    bool power_mgmt;                    /* Go into power saving after Rx?   */
+    bool more_data;                     /* More data follows?               */
+    bool wep;                           /* Is the data encrypted?           */
+    bool order;                         /* Process frames in strict order?  */
 
 } ieee80211_frame_control;
 

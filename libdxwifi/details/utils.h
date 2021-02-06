@@ -60,19 +60,6 @@ static void __assert_M(bool exit, const char* expr, const char* file, int line, 
 #endif
 
 
-static int hexdump(uint8_t *ptr,int size) {
-    int i=0;
-
-    while (i<size) {
-        printf("%08x",i);
-        for(int j=0 ; j<16 && i<size ; i++,j++) {
-            printf(" %02x",*(ptr+i));
-        }
-        printf("\n");
-    }
-    return 0;
-}
-
 static inline void set_bit32(uint32_t *word, uint32_t bit) {
     *word |= (1 << bit);
 }

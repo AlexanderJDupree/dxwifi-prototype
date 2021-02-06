@@ -39,7 +39,9 @@
 #define DXWIFI_BLOCK_SIZE_MIN 0
 #define DXWIFI_BLOCK_SIZE_MAX 1500
 
-#define DXWIFI_PACKET_BUFFER_TIMEOUT    20
+#define DXWIFI_PACKET_BUFFER_TIMEOUT 20
+
+#define DXWIFI_TX_DURATION_ID 0xffff
 
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
 
@@ -113,11 +115,26 @@ typedef struct {
     uint8_t     rtap_rate;                      /* Radiotap data rate       */
     uint16_t    rtap_tx_flags;                  /* Radiotap Tx flags        */
 
+    ieee80211_frame_control fctl;               /* Frame control settings   */
+  
+   /*
+   *  The following addresses can have different intreptations depenging on the 
+   *  state of the to_ds/from_ds flags in the frame control. By default we set
+   *  to_ds to 0 and from_ds to 1.
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   *  | To DS | From DS | Address 1   | Address 2   | Address 3   | Address 4 |
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   *  |     0 |       0 | Destination | Source      | BSSID       | N/A       |
+   *  |     0 |       1 | Destination | BSSID       | Source      | N/A       |
+   *  |     1 |       0 | BSSID       | Source      | Destination | N/A       |
+   *  |     1 |       1 | Receiver    | Transmitter | Destination | Source    |
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   */
     uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];  /* Destination              */
     uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];  /* BSSID                    */
     uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];  /* Source                   */
 
-    pcap_t*     __handle;                     /* Session handle for PCAP  */
+    pcap_t*     __handle;                       /* Session handle for PCAP  */
 } dxwifi_transmitter;
 
 
@@ -130,7 +147,6 @@ void init_transmitter(dxwifi_transmitter* transmitter);
 int transmit_file(dxwifi_transmitter* transmitter, int fd);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
-
 
 
 #endif // LIBDXWIFI_H

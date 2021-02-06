@@ -2,8 +2,9 @@
  * Logging API facade for DxWifi. 
  * 
  * This is only a very basic API but it does support some key performance 
- * features, namely compile time and runtime log level configuration. Logging
- * under the compiler log level gets reduced to a noop. 
+ * features and quality of life features. Namely, compile time and runtime log 
+ * level configuration as well as formatted strings. Logging under the compiler 
+ * log level gets reduced to a noop and formatted strings aren't evaluated. 
  * 
  * By default logging is disabled. To hook up your own logger simply define a 
  * function that fullfills the dxwifi_logger interface and bridge it to your own 

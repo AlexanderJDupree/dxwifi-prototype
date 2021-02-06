@@ -6,7 +6,6 @@
 #include <argp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -46,6 +45,21 @@ int main(int argc, char** argv) {
             .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
             .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
             .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS,
+
+            // Frame control isn't hooked up to the CLI yet
+            .fctl  = {
+                .protocol_version   = IEEE80211_PROTOCOL_VERSION,
+                .type               = IEEE80211_FTYPE_DATA,
+                .stype              = { IEEE80211_STYPE_DATA },
+                .to_ds              = false,
+                .from_ds            = true,
+                .more_frag          = false,
+                .retry              = false,
+                .power_mgmt         = false,
+                .more_data          = true, 
+                .wep                = false,
+                .order              = false
+            },
 
             .addr1 = { 0x05, 0x05, 0x05, 0x05, 0x05, 0x05 },
             .addr2 = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA },
@@ -119,12 +133,12 @@ static struct argp_option opts[] = {
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_GROUP},
 
     { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_ADDRESS_GROUP },
-    { "desti",  GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
+    { "dest",   GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
     { "bssid",  GET_KEY(2, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)" },
     { "source", GET_KEY(3, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (FF:00:FF:00:FF:00)" },
 
     { 0, 0,  0,  0, "Radiotap Header Configuration Options", RADIOTAP_FLAGS_GROUP },
-    { 0, 0,  0,  0, "WARN: The following fields are driver dependent and/or may not be supported by DxWifi. Most of these fields may or not have any effect on packet injection", RADIOTAP_FLAGS_GROUP },
+    { 0, 0,  0,  0, "WARN: The following fields are driver dependent and/or may not be supported by DxWifi.", RADIOTAP_FLAGS_GROUP },
     { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                        RADIOTAP_FLAGS_GROUP },
     { "short-preamble", GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE,      RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with short preamble",               RADIOTAP_FLAGS_GROUP },
     { "wep",            GET_KEY(IEEE80211_RADIOTAP_F_WEP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with WEP encryption",               RADIOTAP_FLAGS_GROUP },

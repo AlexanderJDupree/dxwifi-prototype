@@ -8,7 +8,6 @@
 
 #include <libdxwifi/details/logging.h>
 
-// TODO move implementation details to logging.c
 enum dxwifi_log_level __user_log_level = DXWIFI_LOG_OFF;
 dxwifi_logger __logger = 0;
 
