@@ -141,8 +141,13 @@ typedef struct {
  * data.
  */
 typedef struct {
-  const char* device;
+    const char* device;                         /* 802.11 interface name    */
 
+    // https://www.tcpdump.org/manpages/pcap.3pcap.html
+    int         snaplen;
+    int         packet_buffer_timeout;
+
+    pcap_t*     __handle;                       /* Session handle for PCAP  */
 } dxwifi_receiver;
 
 /************************
@@ -155,5 +160,11 @@ int transmit_file(dxwifi_transmitter* transmitter, int fd);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
 
+
+void init_receiver(dxwifi_receiver* receiver);
+
+int receiver_listen(dxwifi_receiver* receiver, int fd);
+
+void close_receiver(dxwifi_receiver* receiver);
 
 #endif // LIBDXWIFI_H

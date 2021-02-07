@@ -41,6 +41,7 @@ void set_logger(dxwifi_logger logger);
 
 void log_hexdump(uint8_t* data, int size);
 
+
 #if defined(LIBDXWIFI_DISABLE_LOGGING)
   #define DXWIFI_LOG_LEVEL 0
 #elif defined(NDEBUG)

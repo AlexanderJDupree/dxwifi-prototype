@@ -8,6 +8,7 @@
 
 #include <libdxwifi/details/logging.h>
 
+
 enum dxwifi_log_level __user_log_level = DXWIFI_LOG_OFF;
 dxwifi_logger __logger = 0;
 
@@ -47,6 +48,7 @@ void set_log_level(enum dxwifi_log_level log_level) {
 void set_logger(dxwifi_logger logger) {
     __logger = logger;
 }
+
 
 void log_hexdump(uint8_t* data, int size) {
     // Hex dump is "Expensive" so we only enable it for trace logging

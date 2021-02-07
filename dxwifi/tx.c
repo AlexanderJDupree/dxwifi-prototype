@@ -14,9 +14,8 @@
 #include <libdxwifi/details/logging.h>
 
 
-#define DXWIFI_TX_DFLT_FILE                     0
+#define DXWIFI_TX_DFLT_FILE                     STDIN_FILENO
 #define DXWIFI_TX_DFLT_DEVICE                   "mon0"
-#define DXWIFI_TX_DFLT_INPUT_FILE               0
 #define DXWIFI_TX_DFLT_BLK_SIZE                 256
 #define DXWIFI_TX_DFLT_RADIOTAP_FLAGS           IEEE80211_RADIOTAP_F_FCS
 #define DXWIFI_TX_DFLT_RADIOTAP_RATE            1
@@ -105,10 +104,14 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  *      - Add the storage type to the 'dxwifi_transmitter' structure
  *      - Add an argp_option struct to the opts array 
  *      - Add a case to the switch block in parse_opt() 
+ * 
+ * Note: Groups are needed to define a unique key for each option as well as
+ *  format the help message.
+ * 
  */
 
-#define DXWIFI_GROUP 0
-#define MAC_ADDRESS_GROUP            500
+#define DXWIFI_TX_GROUP             0
+#define MAC_ADDRESS_GROUP           500
 #define RADIOTAP_FLAGS_GROUP        1500
 #define RADIOTAP_RATE_GROUP         2000
 #define RADIOTAP_TX_FLAGS_GROUP     2500
@@ -130,8 +133,8 @@ static char doc[] =
 /* Available command line options */
 static struct argp_option opts[] = {
 
-    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", DXWIFI_GROUP},
-    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_GROUP},
+    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", DXWIFI_TX_GROUP },
+    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_TX_GROUP },
 
     { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_ADDRESS_GROUP },
     { "dest",   GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
@@ -262,6 +265,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     default:
         status = ARGP_ERR_UNKNOWN;
+        break;
     }
     return status;
 }

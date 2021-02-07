@@ -81,21 +81,36 @@ static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_cont
 }
 
 
-static void log_configuration(const dxwifi_transmitter* tx) {
+static void log_tx_configuration(const dxwifi_transmitter* tx) {
     log_info(
-            "DxWifi Transmitter Initialized\n"
-            "\tVerbosity:     %s\n"
+            "DxWifi Transmitter Settings\n"
             "\tDevice:        %s\n"
             "\tData Rate:     %dMbps\n"
             "\tRTAP flags:    0x%x\n"
             "\tRTAP Tx flags: 0x%x\n",
-            log_level_to_str(tx->verbosity),
             tx->device,
             tx->rtap_rate,
             tx->rtap_flags,
             tx->rtap_tx_flags
     );
 }
+
+
+static void log_rx_configuration(const dxwifi_receiver* rx) {
+    int datalink = pcap_datalink(rx->__handle);
+    log_info(
+            "DxWifi Receiver Settings\n"
+            "\tDevice:                   %s\n"
+            "\tSnapshot Length:          %d\n"
+            "\tPacket Buffer Timeout:    %dms\n"
+            "\tDatalink Type:            %s\n",
+            rx->device,
+            rx->snaplen,
+            rx->packet_buffer_timeout,
+            pcap_datalink_val_to_description_or_dlt(datalink)
+    );
+}
+
 
 static void log_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
     log_debug("Frame: %d - (Bytes Read, Bytes Sent) = (%ld, %ld)", frame_count, bytes_read, bytes_sent);
@@ -119,8 +134,28 @@ void init_transmitter(dxwifi_transmitter* tx) {
     // Hard assert here because if pcap fails it's all FUBAR anyways
     assert_M(tx->__handle != NULL, err_buff);
 
-    log_configuration(tx);
+    log_tx_configuration(tx);
+}
 
+
+void init_receiver(dxwifi_receiver* rx) {
+    debug_assert(rx);
+
+    char err_buff[PCAP_ERRBUF_SIZE];
+
+    rx->__handle = pcap_open_live(
+                        rx->device,
+                        rx->snaplen,
+                        true, 
+                        rx->packet_buffer_timeout,
+                        err_buff
+                    );
+    assert_M(rx->__handle != NULL, err_buff);
+
+    int status = pcap_set_datalink(rx->__handle, DLT_IEEE802_11_RADIO);
+    assert_M(status != PCAP_ERROR, pcap_statustostr(status));
+
+    log_rx_configuration(rx);
 }
 
 
@@ -130,6 +165,15 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
     pcap_close(transmitter->__handle);
 
     log_info("DxWifi Transmitter closed");
+}
+
+
+void close_receiver(dxwifi_receiver* receiver) {
+    debug_assert(receiver && receiver->__handle);
+
+    pcap_close(receiver->__handle);
+
+    log_info("DxWifi Receiver closed");
 }
 
 
@@ -154,13 +198,16 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
 
         status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
-        log_stats(&data_frame, nbytes, status, frame_count + 1);
+        log_stats(&data_frame, nbytes, status, ++frame_count);
 
         debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
-
-        ++frame_count;
     }
 
     teardown_dxwifi_frame(&data_frame);
-    return 0;
+
+    return 0; // TODO accumulate stats into some sort of struct and return that
+}
+
+int receiver_listen(dxwifi_receiver* receiver, int fd) {
+
 }
