@@ -2,6 +2,7 @@
  * DxWifi project library implementations
  */
 
+#include <time.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -112,9 +113,36 @@ static void log_rx_configuration(const dxwifi_receiver* rx) {
 }
 
 
-static void log_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
+static void log_tx_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
     log_debug("Frame: %d - (Bytes Read, Bytes Sent) = (%ld, %ld)", frame_count, bytes_read, bytes_sent);
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
+}
+
+static void log_rx_stats(const dxwifi_receiver* rx, struct pcap_pkthdr* pkt_stats, uint8_t* data) {
+
+    char timestamp[64];
+    struct tm *time;
+    struct pcap_stat capture_stats;
+
+    time = gmtime(&pkt_stats->ts.tv_sec);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
+
+    if(pcap_stats(rx->__handle, &capture_stats) == PCAP_ERROR) {
+        log_debug("Failed to gather capture statistics");
+    }
+    else {
+        // WARNING! capture stats are inconsistent from platform to platform
+        log_debug(
+            "Packets Received: %d\t"
+            "Packets Dropped (Kernel): %d\t"
+            "Packets Dropped (NIC): %d",
+            capture_stats.ps_recv,
+            capture_stats.ps_drop,
+            capture_stats.ps_ifdrop
+            );
+    }
+    log_debug("(%s) - (Capture Length, Packet Length) = (%d, %d)", timestamp, pkt_stats->caplen, pkt_stats->len);
+    log_hexdump(data, pkt_stats->caplen);
 }
 
 
@@ -198,7 +226,7 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
 
         status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
-        log_stats(&data_frame, nbytes, status, ++frame_count);
+        log_tx_stats(&data_frame, nbytes, status, ++frame_count);
 
         debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
     }
@@ -208,6 +236,15 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
     return 0; // TODO accumulate stats into some sort of struct and return that
 }
 
-int receiver_listen(dxwifi_receiver* receiver, int fd) {
+int receiver_listen(dxwifi_receiver* rx, int fd) {
+    debug_assert(rx);
 
+    struct pcap_pkthdr pkt_stats;
+    const u_char* packet_data;
+
+    packet_data = pcap_next(rx->__handle, &pkt_stats);
+
+    log_rx_stats(rx, &pkt_stats, (uint8_t*)packet_data);
+
+    return fd;
 }

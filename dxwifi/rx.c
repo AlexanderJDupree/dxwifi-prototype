@@ -50,9 +50,9 @@ int main(int argc, char** argv) {
 
     init_logging(args.verbosity, logger);
 
-    receiver_listen(receiver, args.file);
-
     init_receiver(receiver);
+
+    receiver_listen(receiver, args.file);
 
     close_receiver(receiver);
     return status;
