@@ -118,7 +118,7 @@ static void log_tx_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
 }
 
-static void log_rx_stats(const dxwifi_receiver* rx, struct pcap_pkthdr* pkt_stats, uint8_t* data) {
+static void log_rx_stats(const dxwifi_receiver* rx, const struct pcap_pkthdr* pkt_stats, uint8_t* data) {
 
     char timestamp[64];
     struct tm *time;
@@ -142,7 +142,7 @@ static void log_rx_stats(const dxwifi_receiver* rx, struct pcap_pkthdr* pkt_stat
             );
     }
     log_debug("(%s) - (Capture Length, Packet Length) = (%d, %d)", timestamp, pkt_stats->caplen, pkt_stats->len);
-    log_hexdump(data, pkt_stats->caplen);
+    log_hexdump(data, pkt_stats->caplen - 1);
 }
 
 
@@ -167,8 +167,10 @@ void init_transmitter(dxwifi_transmitter* tx) {
 
 
 void init_receiver(dxwifi_receiver* rx) {
-    debug_assert(rx);
+    debug_assert(rx && rx->filter);
 
+    int status = 0;
+    struct bpf_program filter;
     char err_buff[PCAP_ERRBUF_SIZE];
 
     rx->__handle = pcap_open_live(
@@ -180,8 +182,14 @@ void init_receiver(dxwifi_receiver* rx) {
                     );
     assert_M(rx->__handle != NULL, err_buff);
 
-    int status = pcap_set_datalink(rx->__handle, DLT_IEEE802_11_RADIO);
-    assert_M(status != PCAP_ERROR, pcap_statustostr(status));
+    status = pcap_set_datalink(rx->__handle, DLT_IEEE802_11_RADIO);
+    assert_M(status != PCAP_ERROR, "Failed to set datalink: %s", pcap_statustostr(status));
+
+    status = pcap_compile(rx->__handle, &filter, rx->filter, rx->optimize, PCAP_NETMASK_UNKNOWN);
+    assert_M(status != PCAP_ERROR, "Failed to compile filter %s: %s", rx->filter, pcap_statustostr(status));
+
+    status = pcap_setfilter(rx->__handle, &filter);
+    assert_M(status != PCAP_ERROR, "Failed to set filter: %s", pcap_statustostr(status));
 
     log_rx_configuration(rx);
 }
@@ -236,15 +244,18 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
     return 0; // TODO accumulate stats into some sort of struct and return that
 }
 
-int receiver_listen(dxwifi_receiver* rx, int fd) {
+static void process_packet(u_char* args, const struct pcap_pkthdr* pkt_stats, const u_char* packet) {
+    dxwifi_receiver* rx = (dxwifi_receiver*)args;
+
+    log_rx_stats(rx, pkt_stats, (uint8_t*)packet);
+};
+
+int receiver_capture(dxwifi_receiver* rx) {
     debug_assert(rx);
 
-    struct pcap_pkthdr pkt_stats;
-    const u_char* packet_data;
+    int status = 0;
 
-    packet_data = pcap_next(rx->__handle, &pkt_stats);
+    status = pcap_loop(rx->__handle, -1, process_packet, (u_char*)rx);
 
-    log_rx_stats(rx, &pkt_stats, (uint8_t*)packet_data);
-
-    return fd;
+    return status;
 }

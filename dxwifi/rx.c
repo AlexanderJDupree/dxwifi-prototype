@@ -16,6 +16,7 @@
 #define DXWIFI_RX_DFLT_FILE         STDOUT_FILENO
 #define DXWIFI_RX_DFLT_VERBOSITY    DXWIFI_LOG_OFF
 #define DXWIFI_RX_DFLT_DEVICE       "mon0"
+#define DXWIFI_RX_DFLT_FILTER       "wlan addr2 aa:aa:aa:aa:aa:aa"
 #define DXWIFI_RX_DFLT_SNAPLEN      SNAPLEN_MAX
 #define DXWIFI_RX_DFLT_TIMEOUT      DXWIFI_PACKET_BUFFER_TIMEOUT
 
@@ -33,13 +34,15 @@ void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
 
 int main(int argc, char** argv) {
 
-    int status = 0;
+    int status  = 0;
 
     cli_args args = {
         .file                       = DXWIFI_RX_DFLT_FILE,
         .verbosity                  = DXWIFI_RX_DFLT_VERBOSITY,
         .rx = {
             .device                 = DXWIFI_RX_DFLT_DEVICE,
+            .filter                 = DXWIFI_RX_DFLT_FILTER,
+            .optimize               = true,
             .snaplen                = DXWIFI_RX_DFLT_SNAPLEN,
             .packet_buffer_timeout  = DXWIFI_RX_DFLT_TIMEOUT
         }
@@ -52,7 +55,9 @@ int main(int argc, char** argv) {
 
     init_receiver(receiver);
 
-    receiver_listen(receiver, args.file);
+    
+    receiver_capture(receiver);
+    
 
     close_receiver(receiver);
     return status;

@@ -144,7 +144,9 @@ typedef struct {
     const char* device;                         /* 802.11 interface name    */
 
     // https://www.tcpdump.org/manpages/pcap.3pcap.html
-    int         snaplen;
+    const char* filter;                         /* BPF Program string       */
+    bool        optimize;                       /* Optimize compiled Filter?*/
+    int         snaplen;                        /* Snapshot length in bytes */
     int         packet_buffer_timeout;
 
     pcap_t*     __handle;                       /* Session handle for PCAP  */
@@ -163,7 +165,7 @@ void close_transmitter(dxwifi_transmitter* transmitter);
 
 void init_receiver(dxwifi_receiver* receiver);
 
-int receiver_listen(dxwifi_receiver* receiver, int fd);
+int receiver_capture(dxwifi_receiver* receiver);
 
 void close_receiver(dxwifi_receiver* receiver);
 
