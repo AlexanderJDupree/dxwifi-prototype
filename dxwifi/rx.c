@@ -90,7 +90,6 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
 #define PCAP_SETTINGS_GROUP 100
 #define CLI_GROUP_LAST      PCAP_SETTINGS_GROUP + 1
 
-#define GET_KEY(x, group) (x + group)
 
 const char* argp_program_version     = DXWIFI_VERSION;
 const char* argp_program_bug_address = "TODO@gmail.com";
@@ -103,9 +102,11 @@ static char doc[] =
 static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode", DXWIFI_RX_GROUP },
 
-    { 0, 0,  0,  0, "Packet Capture Settings", PCAP_SETTINGS_GROUP },
-    { "snaplen",    GET_KEY(1, PCAP_SETTINGS_GROUP),    "<bytes>",  OPTION_NO_USAGE,    "Snapshot length" },
-    { "timeout",    GET_KEY(2, PCAP_SETTINGS_GROUP),    "<ms>",     OPTION_NO_USAGE,    "Packet buffer timeout" },
+    { 0, 0,  0,  0, "Packet Capture Settings (https://www.tcpdump.org/manpages/pcap.3pcap.html)",           PCAP_SETTINGS_GROUP },
+    { "snaplen",        's',    "<bytes>",      OPTION_NO_USAGE,    "Snapshot length",                      PCAP_SETTINGS_GROUP },
+    { "timeout",        't',    "<ms>",         OPTION_NO_USAGE,    "Packet buffer timeout",                PCAP_SETTINGS_GROUP },
+    { "filter",         'f',    "<string>",     OPTION_NO_USAGE,    "Berkely Packet Filter expression",     PCAP_SETTINGS_GROUP },
+    { "no-optimize",    'o',    0,              OPTION_NO_USAGE,    "Do not optimize the BPF expression",   PCAP_SETTINGS_GROUP },
 
     { 0, 0,  0,  0, "Help options", CLI_GROUP_LAST },
     { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
@@ -128,12 +129,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         args->verbosity++;
         break;
 
-    case GET_KEY(1, PCAP_SETTINGS_GROUP):
+    case 's':
         args->rx.snaplen = atoi(arg); // TODO error handling
         break;
 
-    case GET_KEY(2, PCAP_SETTINGS_GROUP):
+    case 't':
         args->rx.packet_buffer_timeout = atoi(arg); 
+        break;
+
+    case 'f':
+        args->rx.filter = arg;
+        break;
+
+    case 'o':
+        args->rx.optimize = false;
         break;
 
     case ARGP_KEY_ARG:
