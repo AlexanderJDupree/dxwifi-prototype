@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <poll.h>
+#include <errno.h>
 #include <unistd.h>
 #include <endian.h>
 
@@ -102,10 +104,14 @@ static void log_rx_configuration(const dxwifi_receiver* rx) {
     log_info(
             "DxWifi Receiver Settings\n"
             "\tDevice:                   %s\n"
+            "\tFilter:                   %s\n"
+            "\tOptimize:                 %d\n"
             "\tSnapshot Length:          %d\n"
             "\tPacket Buffer Timeout:    %dms\n"
             "\tDatalink Type:            %s\n",
             rx->device,
+            rx->filter,
+            rx->optimize,
             rx->snaplen,
             rx->packet_buffer_timeout,
             pcap_datalink_val_to_description_or_dlt(datalink)
@@ -118,7 +124,7 @@ static void log_tx_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
 }
 
-static void log_rx_stats(const dxwifi_receiver* rx, const struct pcap_pkthdr* pkt_stats, uint8_t* data) {
+static void log_rx_stats(const dxwifi_receiver* rx, const struct pcap_pkthdr* pkt_stats, const uint8_t* data) {
 
     char timestamp[64];
     struct tm *time;
@@ -133,8 +139,8 @@ static void log_rx_stats(const dxwifi_receiver* rx, const struct pcap_pkthdr* pk
     else {
         // WARNING! capture stats are inconsistent from platform to platform
         log_debug(
-            "Packets Received: %d\t"
-            "Packets Dropped (Kernel): %d\t"
+            "Packets Received: %d        "
+            "Packets Dropped (Kernel): %d        "
             "Packets Dropped (NIC): %d",
             capture_stats.ps_recv,
             capture_stats.ps_drop,
@@ -142,7 +148,7 @@ static void log_rx_stats(const dxwifi_receiver* rx, const struct pcap_pkthdr* pk
             );
     }
     log_debug("(%s) - (Capture Length, Packet Length) = (%d, %d)", timestamp, pkt_stats->caplen, pkt_stats->len);
-    log_hexdump(data, pkt_stats->caplen - 1);
+    log_hexdump(data, pkt_stats->caplen);
 }
 
 
@@ -184,6 +190,9 @@ void init_receiver(dxwifi_receiver* rx) {
 
     status = pcap_set_datalink(rx->__handle, DLT_IEEE802_11_RADIO);
     assert_M(status != PCAP_ERROR, "Failed to set datalink: %s", pcap_statustostr(status));
+
+    status = pcap_setnonblock(rx->__handle, true, err_buff);
+    assert_M(status != PCAP_ERROR, "Failed to set nonblocking mode: %s", err_buff);
 
     status = pcap_compile(rx->__handle, &filter, rx->filter, rx->optimize, PCAP_NETMASK_UNKNOWN);
     assert_M(status != PCAP_ERROR, "Failed to compile filter %s: %s", rx->filter, pcap_statustostr(status));
@@ -227,7 +236,7 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
 
     construct_radiotap_header(data_frame.radiotap_hdr, tx->rtap_flags, tx->rtap_rate, tx->rtap_tx_flags);
 
-    construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, 0x05, tx->addr1, tx->addr2, tx->addr3);
+    construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, DXWIFI_TX_DURATION_ID, tx->addr1, tx->addr2, tx->addr3);
 
     // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
     while((nbytes = read(fd, data_frame.payload, tx->block_size)) > 0) {
@@ -244,18 +253,52 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
     return 0; // TODO accumulate stats into some sort of struct and return that
 }
 
-static void process_packet(u_char* args, const struct pcap_pkthdr* pkt_stats, const u_char* packet) {
-    dxwifi_receiver* rx = (dxwifi_receiver*)args;
+static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, const uint8_t* frame) {
+    int fd = *args;
 
-    log_rx_stats(rx, pkt_stats, (uint8_t*)packet);
+    const struct ieee80211_radiotap_header* radiotap_hdr = (struct ieee80211_radiotap_header*) frame;
+
+    //const ieee80211_hdr* mac_hdr = (ieee80211_hdr*) (frame + radiotap_hdr->it_len);
+
+    size_t payload_size = pkt_stats->caplen - radiotap_hdr->it_len - sizeof(ieee80211_hdr) - IEEE80211_FCS_SIZE;
+    const uint8_t* payload = frame + radiotap_hdr->it_len + sizeof(ieee80211_hdr);
+
+
+    write(fd, payload, payload_size);
 };
 
-int receiver_capture(dxwifi_receiver* rx) {
-    debug_assert(rx);
+int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
+    debug_assert(rx && rx->__handle);
 
     int status = 0;
+    struct pollfd request;
 
-    status = pcap_loop(rx->__handle, -1, process_packet, (u_char*)rx);
+    request.fd = pcap_get_selectable_fd(rx->__handle);
+
+    request.events = POLLIN;
+
+    rx->__activated = true;
+    // TODO loop control
+    while(rx->__activated) {
+
+        status = poll(&request, 1, 10000);
+        if (status == 0) {
+            log_warning("Receiver timeout occured");
+            rx->__activated = false;
+        }
+        else if (status < 0) {
+            log_error("Error occured: %s", strerror(errno));
+            rx->__activated = false;
+        }
+        else {
+            pcap_dispatch(rx->__handle, 1, process_frame, (uint8_t*)&fd);
+        }
+    }
 
     return status;
+}
+
+
+void receiver_stop_capture(dxwifi_receiver* receiver) {
+    receiver->__activated = false;
 }
