@@ -2,6 +2,7 @@
  * DxWifi Transmitter implementation
  */
 
+#include <string.h>
 #include <stdbool.h>
 
 #include <unistd.h>
