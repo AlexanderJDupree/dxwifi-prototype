@@ -108,7 +108,7 @@ static void log_rx_configuration(const dxwifi_receiver* rx) {
             rx->device,
             rx->snaplen,
             rx->packet_buffer_timeout,
-            pcap_datalink_val_to_description_or_dlt(datalink)
+            pcap_datalink_val_to_description(datalink)
     );
 }
 
