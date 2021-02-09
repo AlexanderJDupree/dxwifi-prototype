@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <libdxwifi/dxwifi.h>
+#include <libdxwifi/receiver.h>
 #include <libdxwifi/details/logging.h>
 
 
@@ -18,7 +19,7 @@
 #define DXWIFI_RX_DFLT_DEVICE       "mon0"
 #define DXWIFI_RX_DFLT_FILTER       "wlan addr2 aa:aa:aa:aa:aa:aa"
 #define DXWIFI_RX_DFLT_SNAPLEN      SNAPLEN_MAX
-#define DXWIFI_RX_DFLT_TIMEOUT      DXWIFI_PACKET_BUFFER_TIMEOUT
+#define DXWIFI_RX_DFLT_TIMEOUT      DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT
 
 
 typedef struct {

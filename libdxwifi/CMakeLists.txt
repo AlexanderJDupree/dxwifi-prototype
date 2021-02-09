@@ -3,7 +3,8 @@ project(libdxwifi)
 
 # Add new files here!
 add_library(libdxwifi STATIC 
-            dxwifi.c
+            transmitter.c
+            receiver.c
             ${PROJECT_SOURCE_DIR}/details/logging.c
             )   
 

@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <libdxwifi/dxwifi.h>
+#include <libdxwifi/transmitter.h>
 #include <libdxwifi/details/logging.h>
 
 
