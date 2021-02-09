@@ -50,7 +50,7 @@ void set_logger(dxwifi_logger logger) {
 }
 
 
-void log_hexdump(uint8_t* data, int size) {
+void log_hexdump(const uint8_t* data, int size) {
     // Hex dump is "Expensive" so we only enable it for trace logging
     #if DXWIFI_LOG_LEVEL < 6
     (void)data;(void)size;

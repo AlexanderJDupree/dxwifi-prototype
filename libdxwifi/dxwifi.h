@@ -67,10 +67,10 @@
  * 
  */
 typedef struct  __attribute__((packed)) {
-  struct ieee80211_radiotap_header  hdr;      /* packed radiotap header */
-  uint8_t                           flags;    /* frame flags            */
-  uint8_t                           rate;     /* data rate (500Kbps)    */
-  uint16_t                          tx_flags; /* transmission flags     */
+    struct ieee80211_radiotap_header    hdr;      /* packed radiotap header   */
+    uint8_t                             flags;    /* frame flags              */
+    uint8_t                             rate;     /* data rate (500Kbps)      */
+    uint16_t                            tx_flags; /* transmission flags       */
 } dxwifi_tx_radiotap_hdr;
 
 
@@ -93,11 +93,11 @@ typedef struct  __attribute__((packed)) {
  * 
  */
 typedef struct { 
-    dxwifi_tx_radiotap_hdr  *radiotap_hdr;  /* frame metadata           */
-    ieee80211_hdr           *mac_hdr;       /* link-layer header        */
-    uint8_t                 *payload;       /* packet data              */
+    dxwifi_tx_radiotap_hdr  *radiotap_hdr;  /* frame metadata               */
+    ieee80211_hdr           *mac_hdr;       /* link-layer header            */
+    uint8_t                 *payload;       /* packet data                  */
 
-    uint8_t                 *__frame;       /* The actual data frame    */
+    uint8_t                 *__frame;       /* The actual data frame        */
 } dxwifi_tx_frame;
 
 
@@ -149,6 +149,7 @@ typedef struct {
     int         snaplen;                        /* Snapshot length in bytes */
     int         packet_buffer_timeout;
 
+    bool        __activated;
     pcap_t*     __handle;                       /* Session handle for PCAP  */
 } dxwifi_receiver;
 
@@ -165,7 +166,9 @@ void close_transmitter(dxwifi_transmitter* transmitter);
 
 void init_receiver(dxwifi_receiver* receiver);
 
-int receiver_capture(dxwifi_receiver* receiver);
+int receiver_activate_capture(dxwifi_receiver* receiver, int fd);
+
+void receiver_stop_capture(dxwifi_receiver* receiver);
 
 void close_receiver(dxwifi_receiver* receiver);
 

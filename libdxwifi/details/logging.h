@@ -39,7 +39,7 @@ void set_log_level(enum dxwifi_log_level log_level);
 
 void set_logger(dxwifi_logger logger);
 
-void log_hexdump(uint8_t* data, int size);
+void log_hexdump(const uint8_t* data, int size);
 
 
 #if defined(LIBDXWIFI_DISABLE_LOGGING)

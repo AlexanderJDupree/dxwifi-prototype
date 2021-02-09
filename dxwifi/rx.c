@@ -55,20 +55,19 @@ int main(int argc, char** argv) {
 
     init_receiver(receiver);
 
-    
-    receiver_capture(receiver);
-    
+    receiver_activate_capture(receiver, args.file);
 
     close_receiver(receiver);
+
     return status;
 }
 
 
 void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
     // For now just log everything to stdout
-    printf("[ %s ] : ", log_level_to_str(log_level));
-    vprintf(fmt, args);
-    printf("\n");
+    fprintf(stderr, "[ %s ] : ", log_level_to_str(log_level));
+    vfprintf(stderr, fmt, args);
+    fprintf(stderr, "\n");
 }
 
 
