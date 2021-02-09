@@ -102,9 +102,9 @@ typedef struct {
    *  |     1 |       1 | Receiver    | Transmitter | Destination | Source    |
    *  +-------+---------+-------------+-------------+-------------+-----------+
    */
-    uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];  /* Destination              */
-    uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];  /* BSSID                    */
-    uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];  /* Source                   */
+    uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];
+    uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];
+    uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];
 
     pcap_t*     __handle;                       /* Session handle for PCAP  */
 } dxwifi_transmitter;

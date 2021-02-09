@@ -127,14 +127,14 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
     struct pollfd request;
 
     request.fd = pcap_get_selectable_fd(rx->__handle);
+    assert_M(request.fd > 0, "Receiver handle cannot be polled");
 
-    request.events = POLLIN;
+    request.events = POLLIN; // Listen for read events only
 
     rx->__activated = true;
-    // TODO loop control
     while(rx->__activated) {
 
-        status = poll(&request, 1, 10000);
+        status = poll(&request, 1, rx->capture_timeout * 1000);
         if (status == 0) {
             log_warning("Receiver timeout occured");
             rx->__activated = false;
@@ -153,5 +153,8 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
 
 void receiver_stop_capture(dxwifi_receiver* receiver) {
-    receiver->__activated = false;
+    if(receiver) {
+        log_info("DxWiFi Receiver closed");
+        receiver->__activated = false;
+    }
 }

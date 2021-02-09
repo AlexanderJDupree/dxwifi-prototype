@@ -17,16 +17,17 @@
  ***********************/
 
 typedef struct {
-    const char* device;                         /* 802.11 interface name    */
+    const char*     device;                 /* 802.11 interface name                        */
+    int             capture_timeout;        /* Number of seconds to wait for a packet       */
 
     // https://www.tcpdump.org/manpages/pcap.3pcap.html
-    const char* filter;                         /* BPF Program string       */
-    bool        optimize;                       /* Optimize compiled Filter?*/
-    int         snaplen;                        /* Snapshot length in bytes */
-    int         packet_buffer_timeout;
+    const char*     filter;                 /* BPF Program string                           */
+    bool            optimize;               /* Optimize compiled Filter?                    */
+    int             snaplen;                /* Snapshot length in bytes                     */
+    int             packet_buffer_timeout;
 
-    bool        __activated;
-    pcap_t*     __handle;                       /* Session handle for PCAP  */
+    volatile bool   __activated;            /* Currently capturing packets?                 */
+    pcap_t*         __handle;               /* Session handle for PCAP                      */
 } dxwifi_receiver;
 
 
