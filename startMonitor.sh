@@ -23,6 +23,7 @@ trap cleanup EXIT
 
 ip link set $dev down
 iw dev $dev set monitor fcsfail otherbss
+iw dev $dev set txpower fixed ${2:-20}dBm
 ip link set $dev up
 iw dev $dev set channel ${2:-3}
 iw dev $dev info
