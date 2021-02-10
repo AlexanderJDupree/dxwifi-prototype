@@ -8,6 +8,8 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/stat.h>
 
 #include <libdxwifi/dxwifi.h>
 #include <libdxwifi/receiver.h>
@@ -15,6 +17,7 @@
 
 
 #define DXWIFI_RX_DFLT_FILE             STDOUT_FILENO
+#define DXWIFI_RX_DFLT_APPEND_MODE      0
 #define DXWIFI_RX_DFLT_VERBOSITY        DXWIFI_LOG_OFF
 #define DXWIFI_RX_DFLT_DEVICE           "mon0"
 #define DXWIFI_RX_DFLT_CAPTURE_TIMEOUT  -1
@@ -25,22 +28,25 @@
 
 typedef struct {
     int file;
+    int append;
     int verbosity;
     dxwifi_receiver rx;
 } cli_args;
 
+
 dxwifi_receiver* receiver = NULL;
 
+
+void sigint_handler(int signum);
 int parse_args(int argc, char** argv, cli_args* out);
 void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
 
 
 int main(int argc, char** argv) {
 
-    int status  = 0;
-
     cli_args args = {
         .file                       = DXWIFI_RX_DFLT_FILE,
+        .append                     = DXWIFI_RX_DFLT_APPEND_MODE,
         .verbosity                  = DXWIFI_RX_DFLT_VERBOSITY,
         .rx = {
             .device                 = DXWIFI_RX_DFLT_DEVICE,
@@ -53,6 +59,8 @@ int main(int argc, char** argv) {
     };
     receiver = &args.rx;
 
+    signal(SIGINT, sigint_handler);
+
     parse_args(argc, argv, &args);
 
     init_logging(args.verbosity, logger);
@@ -63,7 +71,16 @@ int main(int argc, char** argv) {
 
     close_receiver(receiver);
 
-    return status;
+    close(args.file);
+
+    exit(0);
+}
+
+
+void sigint_handler(int signum) {
+    signal(SIGINT, SIG_IGN);
+    receiver_stop_capture(receiver);
+    signal(SIGINT, SIG_DFL);
 }
 
 
@@ -100,11 +117,12 @@ const char* argp_program_bug_address = "TODO@gmail.com";
 static char args_doc[] = "output-file";
 
 static char doc[] = 
-    "Capture packets matching a BPF program and output the data to output-file";
+    "Capture packets matching a BPF program and output the data to output-file or stdout";
 
 static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode",  DXWIFI_RX_GROUP },
     { "timeout",    't',    "<seconds>",            0,  "Length of time, in seconds, to wait for a packet (default: infinity)",     DXWIFI_RX_GROUP },
+    { "append",     'a',    0,                      0,  "Open file in append mode",                                                 DXWIFI_RX_GROUP },
 
     { 0, 0,  0,  0, "Packet Capture Settings (https://www.tcpdump.org/manpages/pcap.3pcap.html)",           PCAP_SETTINGS_GROUP },
     { "snaplen",        's',    "<bytes>",      OPTION_NO_USAGE,    "Snapshot length",                      PCAP_SETTINGS_GROUP },
@@ -120,13 +138,19 @@ static struct argp_option opts[] = {
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
-    error_t status = 0;
-    cli_args* args = (cli_args*) state->input;
+    error_t status  = 0;
+    cli_args* args  = (cli_args*) state->input;
+    int open_flags  = O_WRONLY | O_CREAT | args->append;
+    mode_t mode     = S_IRWXU  | S_IRWXO;
 
     switch (key)
     {
     case 'd':
         args->rx.device = arg;
+        break;
+
+    case 'a':
+        args->append = O_APPEND;
         break;
 
     case 't':
@@ -154,7 +178,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
 
     case ARGP_KEY_ARG:
-        if(state->arg_num >= 1 || (args->file = open(arg, O_WRONLY | O_CREAT)) < 0) {
+        if(state->arg_num >= 1 || (args->file = open(arg, open_flags, mode)) < 0) {
             argp_error(state, "Failed to open file: %s", arg);
             argp_usage(state);
         }

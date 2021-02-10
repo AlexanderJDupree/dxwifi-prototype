@@ -23,11 +23,13 @@
 #define DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS        IEEE80211_RADIOTAP_F_TX_NOACK
 #define DXWIFI_TX_DFLT_VERBOSITY                DXWIFI_LOG_OFF
 
+
 typedef struct {
     int file;
     int verbosity;
     dxwifi_transmitter tx;
 } cli_args;
+
 
 void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
 int parse_args(int argc, char** argv, cli_args* out);

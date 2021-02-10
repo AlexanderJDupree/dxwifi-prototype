@@ -45,7 +45,7 @@ void log_hexdump(const uint8_t* data, int size);
 #if defined(LIBDXWIFI_DISABLE_LOGGING)
   #define DXWIFI_LOG_LEVEL 0
 #elif defined(NDEBUG)
-  #define DXWIFI_LOG_LEVEL 3
+  #define DXWIFI_LOG_LEVEL 4
 #else
   #define DXWIFI_LOG_LEVEL 6
 #endif 
