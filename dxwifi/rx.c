@@ -16,16 +16,6 @@
 #include <libdxwifi/details/logging.h>
 
 
-#define DXWIFI_RX_DFLT_FILE             STDOUT_FILENO
-#define DXWIFI_RX_DFLT_APPEND_MODE      0
-#define DXWIFI_RX_DFLT_VERBOSITY        DXWIFI_LOG_OFF
-#define DXWIFI_RX_DFLT_DEVICE           "mon0"
-#define DXWIFI_RX_DFLT_CAPTURE_TIMEOUT  -1
-#define DXWIFI_RX_DFLT_FILTER           "wlan addr2 aa:aa:aa:aa:aa:aa"
-#define DXWIFI_RX_DFLT_SNAPLEN          SNAPLEN_MAX
-#define DXWIFI_RX_DFLT_BUFFER_TIMEOUT   DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT
-
-
 typedef struct {
     int file;
     int append;
@@ -45,27 +35,28 @@ void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
 int main(int argc, char** argv) {
 
     cli_args args = {
-        .file                       = DXWIFI_RX_DFLT_FILE,
-        .append                     = DXWIFI_RX_DFLT_APPEND_MODE,
-        .verbosity                  = DXWIFI_RX_DFLT_VERBOSITY,
+        .file                       = STDOUT_FILENO,
+        .append                     = 0,
+        .verbosity                  = DXWIFI_LOG_OFF,
         .rx = {
-            .device                 = DXWIFI_RX_DFLT_DEVICE,
-            .capture_timeout        = DXWIFI_RX_DFLT_CAPTURE_TIMEOUT,
-            .filter                 = DXWIFI_RX_DFLT_FILTER,
+            .device                 = "mon0",
+            .dispatch_count         = 5,
+            .capture_timeout        = -1,
+            .filter                 = "wlan addr2 aa:aa:aa:aa:aa:aa",
             .optimize               = true,
-            .snaplen                = DXWIFI_RX_DFLT_SNAPLEN,
-            .packet_buffer_timeout  = DXWIFI_RX_DFLT_BUFFER_TIMEOUT
+            .snaplen                = SNAPLEN_MAX,
+            .packet_buffer_timeout  = DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT
         }
     };
     receiver = &args.rx;
-
-    signal(SIGINT, sigint_handler);
 
     parse_args(argc, argv, &args);
 
     init_logging(args.verbosity, logger);
 
     init_receiver(receiver);
+
+    signal(SIGINT, sigint_handler);
 
     receiver_activate_capture(receiver, args.file);
 
@@ -120,9 +111,10 @@ static char doc[] =
     "Capture packets matching a BPF program and output the data to output-file or stdout";
 
 static struct argp_option opts[] = {
-    { "dev",        'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode",  DXWIFI_RX_GROUP },
-    { "timeout",    't',    "<seconds>",            0,  "Length of time, in seconds, to wait for a packet (default: infinity)",     DXWIFI_RX_GROUP },
-    { "append",     'a',    0,                      0,  "Open file in append mode",                                                 DXWIFI_RX_GROUP },
+    { "dev",            'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode",  DXWIFI_RX_GROUP },
+    { "timeout",        't',    "<seconds>",            0,  "Length of time, in seconds, to wait for a packet (default: infinity)",     DXWIFI_RX_GROUP },
+    { "dispatch-count", 'c',    "<number>",             0,  "Number of packets to process at a time",                                   DXWIFI_RX_GROUP },
+    { "append",         'a',    0,                      0,  "Open file in append mode",                                                 DXWIFI_RX_GROUP },
 
     { 0, 0,  0,  0, "Packet Capture Settings (https://www.tcpdump.org/manpages/pcap.3pcap.html)",           PCAP_SETTINGS_GROUP },
     { "snaplen",        's',    "<bytes>",      OPTION_NO_USAGE,    "Snapshot length",                      PCAP_SETTINGS_GROUP },
@@ -155,6 +147,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
     case 't':
         args->rx.capture_timeout = atoi(arg); // TODO error handling
+        break;
+
+    case 'c':
+        args->rx.dispatch_count = atoi(arg); // TODO error handling
         break;
 
     case 'v':

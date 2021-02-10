@@ -160,9 +160,9 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
     int nbytes          = 0;
     size_t blocksize    = tx->block_size;
 
-    struct pollfd       request;
-    dxwifi_tx_stats     tx_stats;
-    dxwifi_tx_frame     data_frame;
+    struct pollfd   request     = { 0 };
+    dxwifi_tx_stats tx_stats    = { 0 };
+    dxwifi_tx_frame data_frame  = { 0 };
 
     request.fd = fd;
 
@@ -179,12 +179,15 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
     do
     {
         status = poll(&request, 1, tx->transmit_timeout * 1000);
+
         if(status == 0) {
             log_info("Transmitter timeout occured");
             tx->__activated = false;
         }
-        else if(status < 0 && tx->__activated) {
-            log_error("Error occured: %s", strerror(errno));
+        else if(status < 0) {
+            if( tx->__activated) {
+                log_error("Error occured: %s", strerror(errno));
+            }
             tx->__activated = false;
         }
         else {

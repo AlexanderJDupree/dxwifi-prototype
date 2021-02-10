@@ -16,16 +16,6 @@
 #include <libdxwifi/details/logging.h>
 
 
-#define DXWIFI_TX_DFLT_FILE                     STDIN_FILENO
-#define DXWIFI_TX_DFLT_DEVICE                   "mon0"
-#define DXWIFI_TX_DFLT_TIMEOUT                  -1
-#define DXWIFI_TX_DFLT_BLK_SIZE                 256
-#define DXWIFI_TX_DFLT_RADIOTAP_FLAGS           IEEE80211_RADIOTAP_F_FCS
-#define DXWIFI_TX_DFLT_RADIOTAP_RATE            1
-#define DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS        IEEE80211_RADIOTAP_F_TX_NOACK
-#define DXWIFI_TX_DFLT_VERBOSITY                DXWIFI_LOG_OFF
-
-
 typedef struct {
     int file;
     int verbosity;
@@ -46,15 +36,15 @@ int main(int argc, char** argv) {
     int status = 0;
 
     cli_args args = {
-        .file                   = DXWIFI_TX_DFLT_FILE,
-        .verbosity              = DXWIFI_TX_DFLT_VERBOSITY,
+        .file                   = STDIN_FILENO,
+        .verbosity              = DXWIFI_LOG_OFF,
         .tx = {
-            .device             = DXWIFI_TX_DFLT_DEVICE,
-            .block_size         = DXWIFI_TX_DFLT_BLK_SIZE,
-            .transmit_timeout   = DXWIFI_TX_DFLT_TIMEOUT,
-            .rtap_flags         = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
-            .rtap_rate          = DXWIFI_TX_DFLT_RADIOTAP_RATE,
-            .rtap_tx_flags      = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS,
+            .device             = "mon0",
+            .block_size         = 512,
+            .transmit_timeout   = -1,
+            .rtap_flags         = IEEE80211_RADIOTAP_F_FCS,
+            .rtap_rate          = 1,
+            .rtap_tx_flags      = IEEE80211_RADIOTAP_F_TX_NOACK,
 
             // Frame control isn't hooked up to the CLI yet
             .fctl  = {
@@ -78,13 +68,13 @@ int main(int argc, char** argv) {
     };
     transmitter = &args.tx;
 
-    signal(SIGINT, sigint_handler);
-
     parse_args(argc, argv, &args);
 
     init_logging(args.verbosity, logger);
 
     init_transmitter(transmitter);
+
+    signal(SIGINT, sigint_handler);
 
     start_transmission(transmitter, args.file);
 

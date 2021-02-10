@@ -18,7 +18,8 @@
 
 typedef struct {
     const char*     device;                 /* 802.11 interface name                        */
-    int             capture_timeout;        /* Number of seconds to wait for a packet       */
+    unsigned        dispatch_count;         /* Number of packets to process at a time       */
+    unsigned        capture_timeout;        /* Number of seconds to wait for a packet       */
 
     // https://www.tcpdump.org/manpages/pcap.3pcap.html
     const char*     filter;                 /* BPF Program string                           */

@@ -154,12 +154,14 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
             log_info("Receiver timeout occured");
             rx->__activated = false;
         }
-        else if (status < 0 && rx->__activated) {
-            log_error("Error occured: %s", strerror(errno));
+        else if (status < 0) {
+            if(rx->__activated) {
+                log_error("Error occured: %s", strerror(errno));
+            }
             rx->__activated = false;
         }
         else {
-            num_packets += pcap_dispatch(rx->__handle, 1, process_frame, (uint8_t*)&fd);
+            num_packets += pcap_dispatch(rx->__handle, rx->dispatch_count, process_frame, (uint8_t*)&fd);
         }
     }
 
