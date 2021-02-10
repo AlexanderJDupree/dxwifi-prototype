@@ -35,9 +35,8 @@
 
 #define DXWIFI_DFLT_PACKET_BUFFER_TIMEOUT 20
 
-// TODO this was defined arbitrarily. Needs review
 #define DXWIFI_BLOCK_SIZE_MIN 0
-#define DXWIFI_BLOCK_SIZE_MAX 1500
+#define DXWIFI_BLOCK_SIZE_MAX 1400
 
 
 #endif // LIBDXWIFI_H
