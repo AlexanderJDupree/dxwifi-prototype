@@ -44,7 +44,7 @@ static void log_packet_stats(const struct pcap_pkthdr* pkt_stats, const uint8_t*
     time = gmtime(&pkt_stats->ts.tv_sec);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
 
-    log_debug(
+    log_info(
         "(%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
         timestamp, 
         pkt_stats->caplen, 
@@ -145,7 +145,7 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     request.events = POLLIN; // Listen for read events only
 
-    log_info("Staring packet capture...");
+    log_info("Starting packet capture...");
     rx->__activated = true;
     while(rx->__activated) {
 
