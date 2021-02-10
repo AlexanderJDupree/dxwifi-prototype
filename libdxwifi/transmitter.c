@@ -109,12 +109,12 @@ static void log_tx_configuration(const dxwifi_transmitter* tx) {
 
 
 static void log_frame_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
-    log_info("Frame: %d - (Read: %ld, Sent: %ld)", frame_count, bytes_read, bytes_sent);
+    log_debug("Frame: %d - (Read: %ld, Sent: %ld)", frame_count, bytes_read, bytes_sent);
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
 }
 
 static void log_tx_stats(dxwifi_tx_stats stats) {
-    log_debug(
+    log_info(
         "Transmission Stats\n"
         "\tTotal Bytes Read:    %d\n"
         "\tTotal Bytes Sent:    %d\n"
