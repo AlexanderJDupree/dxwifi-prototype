@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <poll.h>
+#include <errno.h>
 #include <unistd.h>
 #include <endian.h>
 
@@ -14,6 +16,13 @@
 #include <libdxwifi/transmitter.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/logging.h>
+
+
+typedef struct {
+    uint32_t frame_count;
+    uint32_t bytes_read;
+    uint32_t bytes_sent;
+} dxwifi_tx_stats;
 
 
 static void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
@@ -96,9 +105,22 @@ static void log_tx_configuration(const dxwifi_transmitter* tx) {
     );
 }
 
-static void log_tx_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
-    log_debug("Frame: %d - (Bytes Read, Bytes Sent) = (%ld, %ld)", frame_count, bytes_read, bytes_sent);
+
+static void log_frame_stats(const dxwifi_tx_frame* frame, size_t bytes_read, size_t bytes_sent, int frame_count) {
+    log_info("Frame: %d - (Read: %ld, Sent: %ld)", frame_count, bytes_read, bytes_sent);
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
+}
+
+static void log_tx_stats(dxwifi_tx_stats stats) {
+    log_info(
+        "Transmission Stats\n"
+        "\tTotal Bytes Read:    %d\n"
+        "\tTotal Bytes Sent:    %d\n"
+        "\tTotal Frames Sent:   %d\n",
+        stats.bytes_read,
+        stats.bytes_sent,
+        stats.frame_count
+        );
 }
 
 
@@ -131,15 +153,20 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 }
 
 
-int transmit_file(dxwifi_transmitter* tx, int fd) {
+int start_transmission(dxwifi_transmitter* tx, int fd) {
     debug_assert(tx && tx->__handle);
 
-    size_t blocksize    = tx->block_size;
-    size_t nbytes       = 0;
     int status          = 0;
-    int frame_count     = 0;
+    int nbytes          = 0;
+    size_t blocksize    = tx->block_size;
 
-    dxwifi_tx_frame data_frame;
+    struct pollfd       request;
+    dxwifi_tx_stats     tx_stats;
+    dxwifi_tx_frame     data_frame;
+
+    request.fd = fd;
+
+    request.events = POLLIN; // Listen for read events only
 
     init_dxwifi_tx_frame(&data_frame, blocksize);
 
@@ -147,17 +174,45 @@ int transmit_file(dxwifi_transmitter* tx, int fd) {
 
     construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, DXWIFI_TX_DURATION_ID, tx->addr1, tx->addr2, tx->addr3);
 
-    // TODO: poll fd to see if there's any data to even read, no need to block waiting on a read
-    while((nbytes = read(fd, data_frame.payload, tx->block_size)) > 0) {
+    log_info("Starting transmission...");
+    tx->__activated = true;
+    do
+    {
+        status = poll(&request, 1, tx->transmit_timeout * 1000);
+        if(status == 0) {
+            log_info("Transmitter timeout occured");
+            tx->__activated = false;
+        }
+        else if(status < 0 && tx->__activated) {
+            log_error("Error occured: %s", strerror(errno));
+            tx->__activated = false;
+        }
+        else {
+            nbytes = read(fd, data_frame.payload, tx->block_size);
+            if(nbytes > 0) {
+                status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
-        status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
+                debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
 
-        log_tx_stats(&data_frame, nbytes, status, ++frame_count);
+                tx_stats.bytes_read  += nbytes;
+                tx_stats.bytes_sent  += status;
+                tx_stats.frame_count += 1;
 
-        debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
-    }
+                log_frame_stats(&data_frame, nbytes, status, tx_stats.frame_count);
+            }
+        }
+    } while (tx->__activated && nbytes > 0);
 
+    log_tx_stats(tx_stats);
+    
     teardown_dxwifi_frame(&data_frame);
 
-    return 0; // TODO accumulate stats into some sort of struct and return that
+    return tx_stats.frame_count;
+}
+
+void stop_transmission(dxwifi_transmitter* tx) {
+    if(tx) {
+        log_info("DxWifi Transmission stopped");
+        tx->__activated = false;
+    }
 }

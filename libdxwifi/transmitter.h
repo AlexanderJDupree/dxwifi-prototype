@@ -82,6 +82,8 @@ typedef struct {
 typedef struct {
     const char* device;                         /* 802.11 interface name    */
     size_t      block_size;                     /* Size in bytes to read    */
+    int         transmit_timeout;               /* Seconds to wait for read */
+
 
     uint8_t     rtap_flags;                     /* Radiotap flags           */
     uint8_t     rtap_rate;                      /* Radiotap data rate       */
@@ -102,11 +104,12 @@ typedef struct {
    *  |     1 |       1 | Receiver    | Transmitter | Destination | Source    |
    *  +-------+---------+-------------+-------------+-------------+-----------+
    */
-    uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];
-    uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];
-    uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];
+    uint8_t         addr1[IEEE80211_MAC_ADDR_LEN];
+    uint8_t         addr2[IEEE80211_MAC_ADDR_LEN];
+    uint8_t         addr3[IEEE80211_MAC_ADDR_LEN];
 
-    pcap_t*     __handle;                       /* Session handle for PCAP  */
+    volatile bool   __activated;                /* Currently transmitting?  */
+    pcap_t*         __handle;                   /* Session handle for PCAP  */
 } dxwifi_transmitter;
 
 
@@ -116,7 +119,9 @@ typedef struct {
 
 void init_transmitter(dxwifi_transmitter* transmitter);
 
-int transmit_file(dxwifi_transmitter* transmitter, int fd);
+int start_transmission(dxwifi_transmitter* transmitter, int fd);
+
+void stop_transmission(dxwifi_transmitter* transmitter);
 
 void close_transmitter(dxwifi_transmitter* transmitter);
 

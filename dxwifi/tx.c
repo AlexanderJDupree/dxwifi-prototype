@@ -9,6 +9,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <libdxwifi/dxwifi.h>
 #include <libdxwifi/transmitter.h>
@@ -17,6 +18,7 @@
 
 #define DXWIFI_TX_DFLT_FILE                     STDIN_FILENO
 #define DXWIFI_TX_DFLT_DEVICE                   "mon0"
+#define DXWIFI_TX_DFLT_TIMEOUT                  -1
 #define DXWIFI_TX_DFLT_BLK_SIZE                 256
 #define DXWIFI_TX_DFLT_RADIOTAP_FLAGS           IEEE80211_RADIOTAP_F_FCS
 #define DXWIFI_TX_DFLT_RADIOTAP_RATE            1
@@ -31,8 +33,12 @@ typedef struct {
 } cli_args;
 
 
-void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
+dxwifi_transmitter* transmitter = NULL;
+
+
+void sigint_handler(int signum);
 int parse_args(int argc, char** argv, cli_args* out);
+void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
 
 
 int main(int argc, char** argv) {
@@ -40,14 +46,15 @@ int main(int argc, char** argv) {
     int status = 0;
 
     cli_args args = {
-        .file               = DXWIFI_TX_DFLT_FILE,
-        .verbosity          = DXWIFI_TX_DFLT_VERBOSITY,
+        .file                   = DXWIFI_TX_DFLT_FILE,
+        .verbosity              = DXWIFI_TX_DFLT_VERBOSITY,
         .tx = {
-            .device         = DXWIFI_TX_DFLT_DEVICE,
-            .block_size     = DXWIFI_TX_DFLT_BLK_SIZE,
-            .rtap_flags     = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
-            .rtap_rate      = DXWIFI_TX_DFLT_RADIOTAP_RATE,
-            .rtap_tx_flags  = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS,
+            .device             = DXWIFI_TX_DFLT_DEVICE,
+            .block_size         = DXWIFI_TX_DFLT_BLK_SIZE,
+            .transmit_timeout   = DXWIFI_TX_DFLT_TIMEOUT,
+            .rtap_flags         = DXWIFI_TX_DFLT_RADIOTAP_FLAGS,
+            .rtap_rate          = DXWIFI_TX_DFLT_RADIOTAP_RATE,
+            .rtap_tx_flags      = DXWIFI_TX_DFLT_RADIOTAP_TX_FLAGS,
 
             // Frame control isn't hooked up to the CLI yet
             .fctl  = {
@@ -69,8 +76,9 @@ int main(int argc, char** argv) {
             .addr3 = { 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00 }
         }
     };
-    dxwifi_transmitter* transmitter = &args.tx;
+    transmitter = &args.tx;
 
+    signal(SIGINT, sigint_handler);
 
     parse_args(argc, argv, &args);
 
@@ -78,14 +86,21 @@ int main(int argc, char** argv) {
 
     init_transmitter(transmitter);
 
-    status = transmit_file(transmitter, args.file);
+    start_transmission(transmitter, args.file);
 
-    // Teardown resources - should do some final logging too
     close_transmitter(transmitter);
+
     close(args.file);
+
     exit(status);
 }
 
+
+void sigint_handler(int signum) {
+    signal(SIGINT, SIG_IGN);
+    stop_transmission(transmitter);
+    signal(SIGINT, SIG_DFL);
+}
 
 void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
     // For now just log everything to stdout
@@ -136,8 +151,9 @@ static char doc[] =
 /* Available command line options */
 static struct argp_option opts[] = {
 
-    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode", DXWIFI_TX_GROUP },
-    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file", DXWIFI_TX_GROUP },
+    { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode",    DXWIFI_TX_GROUP },
+    { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file",                              DXWIFI_TX_GROUP },
+    { "timeout",    't',    "<seconds>",            0,  "Length of time in seconds to wait for an available read from file",        DXWIFI_TX_GROUP },
 
     { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_ADDRESS_GROUP },
     { "addr1",   GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
@@ -190,6 +206,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
                 );
             argp_usage(state);
         }
+        break;
+
+    case 't':
+        args->tx.transmit_timeout = atoi(arg);
         break;
 
     case 'v':

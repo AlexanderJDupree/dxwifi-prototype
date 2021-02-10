@@ -99,9 +99,11 @@ static inline void flip_bit16(uint16_t *word, uint16_t bit) {
     *word ^= (1 << bit);
 }
 
+
 static inline void set_bits16(uint16_t* word, uint16_t mask, uint16_t value) {
     *word = (*word & ~mask) | (value & mask);
 }
+
 
 static inline uint32_t check_bit16(uint16_t *word, uint16_t bit) {
     return *word & (1 << bit);

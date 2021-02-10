@@ -44,7 +44,12 @@ static void log_packet_stats(const struct pcap_pkthdr* pkt_stats, const uint8_t*
     time = gmtime(&pkt_stats->ts.tv_sec);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
 
-    log_debug("(%s) - (Capture Length, Packet Length) = (%d, %d)", timestamp, pkt_stats->caplen, pkt_stats->len);
+    log_debug(
+        "(%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
+        timestamp, 
+        pkt_stats->caplen, 
+        pkt_stats->len
+        );
     log_hexdump(data, pkt_stats->caplen);
 }
 
@@ -140,16 +145,17 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     request.events = POLLIN; // Listen for read events only
 
+    log_info("Staring packet capture...");
     rx->__activated = true;
     while(rx->__activated) {
 
         status = poll(&request, 1, rx->capture_timeout * 1000);
         if (status == 0) {
-            log_warning("Receiver timeout occured");
+            log_info("Receiver timeout occured");
             rx->__activated = false;
         }
         else if (status < 0 && rx->__activated) {
-            log_error("Err occured: %s", strerror(errno));
+            log_error("Error occured: %s", strerror(errno));
             rx->__activated = false;
         }
         else {
