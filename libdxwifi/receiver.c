@@ -44,7 +44,7 @@ static void log_packet_stats(const struct pcap_pkthdr* pkt_stats, const uint8_t*
     time = gmtime(&pkt_stats->ts.tv_sec);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
 
-    log_info(
+    log_debug(
         "(%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
         timestamp, 
         pkt_stats->caplen, 

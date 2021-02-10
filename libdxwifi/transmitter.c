@@ -114,7 +114,7 @@ static void log_frame_stats(const dxwifi_tx_frame* frame, size_t bytes_read, siz
 }
 
 static void log_tx_stats(dxwifi_tx_stats stats) {
-    log_info(
+    log_debug(
         "Transmission Stats\n"
         "\tTotal Bytes Read:    %d\n"
         "\tTotal Bytes Sent:    %d\n"
