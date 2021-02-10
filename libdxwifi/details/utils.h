@@ -47,16 +47,21 @@ static void __assert_M(bool exit, const char* expr, const char* file, int line, 
     }
 }
 
+// Needed to get rid of 'unused-parameter' warnings in release builds
+static inline void __assert_unused(const int dummy, ...) { (void)dummy; }
+#define __DXWIFI_ASSERT_UNUSED(...)\
+  do { if(0) __assert_unused(0, ##__VA_ARGS__); } while(0)
+
 #ifdef NDEBUG
-#define debug_assert(expr) (void)0
-#define debug_assert_M(expr, msg, ...) (void)0
-#define debug_assert_always(msg, ...) (void)0
-#define debug_assert_continue(expr, msg, ...) (void)0
+#define debug_assert(expr)                      __DXWIFI_ASSERT_UNUSED(expr)
+#define debug_assert_M(expr, msg, ...)          __DXWIFI_ASSERT_UNUSED(expr, msg, ##__VA_ARGS__)
+#define debug_assert_always(msg, ...)           __DXWIFI_ASSERT_UNUSED(msg, ##__VA_ARGS__)
+#define debug_assert_continue(expr, msg, ...)   __DXWIFI_ASSERT_UNUSED(expr, msg, ##__VA_ARGS__)
 #else
-#define debug_assert(expr) assert_M(expr, "")
-#define debug_assert_M(expr, msg, ...) assert_M(expr, msg, ##__VA_ARGS__)
-#define debug_assert_always(msg, ...) assert_always(msg, ##__VA_ARGS__)
-#define debug_assert_continue(expr, msg, ...) assert_continue(expr, msg, ##__VA_ARGS__)
+#define debug_assert(expr)                      assert_M(expr, "")
+#define debug_assert_M(expr, msg, ...)          assert_M(expr, msg, ##__VA_ARGS__)
+#define debug_assert_always(msg, ...)           assert_always(msg, ##__VA_ARGS__)
+#define debug_assert_continue(expr, msg, ...)   assert_continue(expr, msg, ##__VA_ARGS__)
 #endif
 
 

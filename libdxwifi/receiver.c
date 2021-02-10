@@ -88,7 +88,8 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
     // TODO add radiotap and mac header to stats
     log_packet_stats(pkt_stats, frame);
 
-    write(fd, payload, payload_size);
+    size_t nbytes = write(fd, payload, payload_size);
+    debug_assert_continue(nbytes == payload_size, "Partial write occured: %ld/%ld", nbytes, payload_size);
 };
 
 
