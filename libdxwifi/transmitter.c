@@ -95,10 +95,12 @@ static void log_tx_configuration(const dxwifi_transmitter* tx) {
     log_info(
             "DxWifi Transmitter Settings\n"
             "\tDevice:        %s\n"
+            "\tBlock Size:    %ld\n"
             "\tData Rate:     %dMbps\n"
             "\tRTAP flags:    0x%x\n"
             "\tRTAP Tx flags: 0x%x\n",
             tx->device,
+            tx->block_size,
             tx->rtap_rate,
             tx->rtap_flags,
             tx->rtap_tx_flags
