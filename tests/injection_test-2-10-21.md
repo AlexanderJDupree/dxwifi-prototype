@@ -92,7 +92,7 @@ pi@raspberrypi:~/dxwifi-protoype $ sudo ./bin/rx -vvvvv daisy-rx1.bmp
 [ INFO ] : DxWifi Receiver closed
 ```
 
-`Data Overhead: ~7.25%, Loss Rate: 3.39%`
+`Data Overhead: ~7.25%, Packet Loss Rate: 3.39%, Data Loss: 3.39%`
 
 Which results in this jumble
 
@@ -141,7 +141,7 @@ pi@raspberrypi:~/dxwifi-protoype $ sudo ./bin/rx -vvvvv daisy-rx2.bmp
         Packets Dropped (NIC): 0
 [ INFO ] : DxWifi Receiver closed
 ```
-`Data Overhead: ~2.8%, Loss Rate: 5.3%`
+`Data Overhead: ~2.8%, Packet Loss Rate: 5.3%, Data Loss: 5.3%`
 
 ![daisy-bitmap](images/daisy-rx2.bmp)
 
@@ -189,7 +189,7 @@ pi@raspberrypi:~/dxwifi-protoype $ sudo ./bin/rx -vvvvv daisy-rx3.bmp
 [ INFO ] : DxWifi Receiver closed
 ```
 
-`Data Overhead: ~2.8%, Loss Rate: 3.0%`
+`Data Overhead: ~2.8%, Packet Loss Rate: 3.0%, Data Loss: 3.04%`
 
 ![daisy-bitmap](images/daisy-rx3.bmp)
 
