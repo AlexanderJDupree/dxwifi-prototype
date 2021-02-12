@@ -13,7 +13,7 @@ students with cheap, COTS WiFi adapters. The 802.11 WiFi standard was designed
 for reliability over a Local Area Network in mind, and has some significant 
 shortcomings when it comes to long range transmission. 
 
-DxWiFi attempts to ssurmount these shortcomings by leveraging packet injection 
+DxWiFi attempts to surmount these shortcomings by leveraging packet injection 
 and monitoring. Typically used by security researchers (or nefarious hackers), 
 packet injection and monitoring has seen extensive use in the testing (and breaking)
 of 802.11 protocols. With packet injection we can send custom raw data frames 
