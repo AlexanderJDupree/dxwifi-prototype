@@ -11,6 +11,9 @@
  *  Constants
  ***********************/
 
+#define DXWIFI_RX_PACKET_BUFFER_SIZE_MIN 1024
+#define DXWIFI_RX_PACKET_BUFFER_SIZE_MAX (1024 * 1024)
+
 
 /************************
  *  Data structures
@@ -20,6 +23,7 @@ typedef struct {
     const char*     device;                 /* 802.11 interface name                        */
     unsigned        dispatch_count;         /* Number of packets to process at a time       */
     unsigned        capture_timeout;        /* Number of seconds to wait for a packet       */
+    size_t          packet_buffer_size;     /* Size of the packet buffer                    */
 
     // https://www.tcpdump.org/manpages/pcap.3pcap.html
     const char*     filter;                 /* BPF Program string                           */

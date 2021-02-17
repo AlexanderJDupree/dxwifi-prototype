@@ -18,6 +18,12 @@
 
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
 
+#define DXWIFI_TX_PREAMBLE_SIZE 256
+#define DXWIFI_TX_PREAMBLE_VALUE 0xff
+
+#define DXWIFI_TX_EOT_SIZE 256
+#define DXWIFI_TX_EOT_VALUE 0xaa
+
 #define DXWIFI_TX_RADIOTAP_PRESENCE_BIT_FIELD ( 0x1 << IEEE80211_RADIOTAP_FLAGS    \
                                               | 0x1 << IEEE80211_RADIOTAP_RATE     \
                                               | 0x1 << IEEE80211_RADIOTAP_TX_FLAGS)\

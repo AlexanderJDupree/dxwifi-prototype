@@ -189,8 +189,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         if( args->tx.block_size < DXWIFI_BLOCK_SIZE_MIN || args->tx.block_size > DXWIFI_BLOCK_SIZE_MAX) {
             argp_error(
                 state,
-                "blocksize of `%ld` not in range(%d,%d)\n", 
-                args->tx.block_size, 
+                "blocksize of `%s` not in range(%d,%d)\n", 
+                arg, 
                 DXWIFI_BLOCK_SIZE_MIN,
                 DXWIFI_BLOCK_SIZE_MAX
                 );

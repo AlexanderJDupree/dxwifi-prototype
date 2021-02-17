@@ -25,6 +25,12 @@ typedef struct {
 } dxwifi_tx_stats;
 
 
+typedef enum {
+    CONTROL_FRAME_PREAMBLE,
+    CONTROL_FRAME_END_OF_TRANMISSION
+} dxwifi_control_frame_type;
+
+
 static void init_dxwifi_tx_frame(dxwifi_tx_frame* frame, size_t block_size) {
     debug_assert(frame);
 
@@ -88,6 +94,48 @@ static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_cont
     memcpy(mac->addr3, addr3, IEEE80211_MAC_ADDR_LEN);
 
     mac->seq_ctrl = 0;
+}
+
+
+static const char* control_frame_type_to_str(dxwifi_control_frame_type type) {
+    switch (type)
+    {
+    case CONTROL_FRAME_PREAMBLE:
+        return "Preamble";
+    
+    case CONTROL_FRAME_END_OF_TRANMISSION:
+        return "EOT";
+
+    default:
+        return "Unknown control type";
+    }
+}
+
+
+static void send_control_frame(dxwifi_transmitter* tx, dxwifi_tx_frame* data_frame, dxwifi_control_frame_type type) {
+    debug_assert(tx && tx->__handle && data_frame && data_frame->__frame);
+
+    size_t control_data_size  = 0;
+    size_t control_data_value = 0;
+
+    if( type == CONTROL_FRAME_PREAMBLE) {
+        control_data_size  = DXWIFI_TX_PREAMBLE_SIZE;
+        control_data_value = DXWIFI_TX_PREAMBLE_VALUE;
+    }
+    else {
+        control_data_size = DXWIFI_TX_EOT_SIZE;
+        control_data_size = DXWIFI_TX_EOT_VALUE;
+    }
+
+    uint8_t control_data[control_data_size];
+
+    memset(control_data, control_data_value, control_data_size);
+
+    // TODO add redundancy and send multiple times?
+    int status = pcap_inject(tx->__handle, data_frame->__frame, DXWIFI_TX_HEADER_SIZE + sizeof(control_data) + IEEE80211_FCS_SIZE);
+
+    log_info("%s Frame Sent: %d", control_frame_type_to_str(type), status);
+    log_hexdump(data_frame->__frame, DXWIFI_TX_HEADER_SIZE + sizeof(control_data) + IEEE80211_FCS_SIZE);
 }
 
 
@@ -177,7 +225,11 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
     construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, DXWIFI_TX_DURATION_ID, tx->addr1, tx->addr2, tx->addr3);
 
     log_info("Starting transmission...");
+
     tx->__activated = true;
+
+    send_control_frame(tx, &data_frame, CONTROL_FRAME_PREAMBLE);
+
     do
     {
         status = poll(&request, 1, tx->transmit_timeout * 1000);
@@ -207,6 +259,8 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
             }
         }
     } while (tx->__activated && nbytes > 0);
+
+    send_control_frame(tx, &data_frame, CONTROL_FRAME_END_OF_TRANMISSION);
 
     log_tx_stats(tx_stats);
     

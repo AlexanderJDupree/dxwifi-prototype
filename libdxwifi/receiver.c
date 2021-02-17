@@ -16,17 +16,27 @@
 #include <libdxwifi/details/ieee80211.h>
 
 
+typedef struct {
+    uint8_t*    packet_buffer;
+    size_t      index;
+    size_t      packet_buffer_size;
+    int         fd;
+} frame_controller;
+
+
 static void log_rx_configuration(const dxwifi_receiver* rx) {
     int datalink = pcap_datalink(rx->__handle);
     log_info(
             "DxWifi Receiver Settings\n"
             "\tDevice:                   %s\n"
+            "\tPacket Buffer Size:       %ld\n"
             "\tFilter:                   %s\n"
             "\tOptimize:                 %d\n"
             "\tSnapshot Length:          %d\n"
             "\tPacket Buffer Timeout:    %dms\n"
             "\tDatalink Type:            %s\n",
             rx->device,
+            rx->packet_buffer_size,
             rx->filter,
             rx->optimize,
             rx->snaplen,
@@ -76,8 +86,35 @@ static void log_capture_stats(dxwifi_receiver* rx) {
 }
 
 
+static void init_frame_controller(frame_controller* fc, size_t buffsize) {
+    debug_assert(fc && buffsize > 0);
+
+    fc->packet_buffer_size = buffsize;
+    fc->packet_buffer = calloc(fc->packet_buffer_size, sizeof(uint8_t));
+    assert_M(fc->packet_buffer, "Failed to allocated Packet Buffer of size: %ld", fc->packet_buffer_size);
+
+    fc->index = 0;
+}
+
+
+static void teardown_frame_controller(frame_controller* fc) {
+    debug_assert(fc);
+
+    free(fc->packet_buffer);
+    fc->packet_buffer = NULL;
+    fc->packet_buffer_size = 0;
+    fc->index = 0;
+}
+
+static void dump_packet_buffer(frame_controller* fc) {
+    write(fc->fd, fc->packet_buffer, fc->index);
+    fc->index = 0;
+}
+
+
 static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, const uint8_t* frame) {
-    int fd = *args;
+
+    frame_controller* fc = (frame_controller*)args;
 
     const struct ieee80211_radiotap_header* radiotap_hdr = (struct ieee80211_radiotap_header*) frame;
 
@@ -85,11 +122,17 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
 
     const uint8_t* payload = frame + radiotap_hdr->it_len + sizeof(ieee80211_hdr);
 
+    // Buffer is full, write it out and reset position
+    if( fc->index + payload_size >= fc->packet_buffer_size ) {
+        dump_packet_buffer(fc);
+    }
+
+    memcpy(fc->packet_buffer + fc->index, payload, payload_size);
+    fc->index += payload_size;
+
     // TODO add radiotap and mac header to stats
     log_packet_stats(pkt_stats, frame);
 
-    size_t nbytes = write(fd, payload, payload_size);
-    debug_assert_continue(nbytes == payload_size, "Partial write occured: %ld/%ld", nbytes, payload_size);
 };
 
 
@@ -139,7 +182,12 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     int status = 0;
     int num_packets = 0;
+
+    frame_controller fc;
     struct pollfd request;
+
+    fc.fd = fd;
+    init_frame_controller(&fc, rx->packet_buffer_size);
 
     request.fd = pcap_get_selectable_fd(rx->__handle);
     assert_M(request.fd > 0, "Receiver handle cannot be polled");
@@ -162,9 +210,14 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
             rx->__activated = false;
         }
         else {
-            num_packets += pcap_dispatch(rx->__handle, rx->dispatch_count, process_frame, (uint8_t*)&fd);
+            num_packets += pcap_dispatch(rx->__handle, rx->dispatch_count, process_frame, (uint8_t*)&fc);
         }
     }
+
+    // TODO write sequentially by packet order 
+    write(fc.fd, fc.packet_buffer, fc.index);
+
+    teardown_frame_controller(&fc);
 
     log_capture_stats(rx);
 
