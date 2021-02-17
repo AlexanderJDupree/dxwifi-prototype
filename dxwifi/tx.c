@@ -109,7 +109,7 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  * 
  * Current implementation uses argp, to add a new command line option you will 
  * need to modify three things:
- *      - Add the storage type to the 'dxwifi_transmitter' structure
+ *      - Add the storage type to the 'cli_args' structure
  *      - Add an argp_option struct to the opts array 
  *      - Add a case to the switch block in parse_opt() 
  * 

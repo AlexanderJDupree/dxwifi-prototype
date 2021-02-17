@@ -9,5 +9,10 @@ add_executable(rx
                rx.c
                )
 
+add_executable(encode
+               encode.c
+               )               
+
 target_link_libraries(tx dxwifi)
 target_link_libraries(rx dxwifi)
+target_link_libraries(encode dxwifi openfec)
