@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <libdxwifi/dxwifi.h>
 #include <libdxwifi/receiver.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/logging.h>
@@ -20,6 +21,7 @@ typedef struct {
     uint8_t*    packet_buffer;
     size_t      index;
     size_t      packet_buffer_size;
+    bool        eot_reached;
     int         fd;
 } frame_controller;
 
@@ -106,9 +108,64 @@ static void teardown_frame_controller(frame_controller* fc) {
     fc->index = 0;
 }
 
+
 static void dump_packet_buffer(frame_controller* fc) {
     write(fc->fd, fc->packet_buffer, fc->index);
     fc->index = 0;
+}
+
+
+static dxwifi_control_frame_t check_frame_control(const uint8_t* payload, size_t payload_size, float check_threshold) {
+    debug_assert(payload && payload_size > 0);
+
+    unsigned eot = 0;
+    unsigned preamble = 0;
+    dxwifi_control_frame_t type = CONTROL_FRAME_NONE;
+
+    if( payload_size <= DXWIFI_FRAME_CONTROL_DATA_SIZE ) {
+        for (size_t i = 0; i < payload_size; i++)
+        {
+            switch (payload[i])
+            {
+            case CONTROL_FRAME_PREAMBLE:
+                ++preamble;
+                break;
+
+            case CONTROL_FRAME_END_OF_TRANSMISSION:
+                ++eot;
+                break;
+            
+            default:
+                break;
+            }
+        }
+        if ( (eot / payload_size) > check_threshold) {
+            type = CONTROL_FRAME_END_OF_TRANSMISSION;
+        }
+        else if ( (preamble / payload_size ) > check_threshold) {
+            type = CONTROL_FRAME_PREAMBLE;
+        }
+    }
+    return type;
+}
+
+static void handle_frame_control(frame_controller* fc, dxwifi_control_frame_t type) {
+    switch (type)
+    {
+    case CONTROL_FRAME_PREAMBLE:
+        // TODO: handle cases where we receive a preamble when we weren't expecting it
+        log_info("Uplink established!");
+        break;
+
+    case CONTROL_FRAME_END_OF_TRANSMISSION:
+        log_info("EOT reached");
+        fc->eot_reached = true;
+        break;
+    
+    default:
+        debug_assert_always("Unknown control type");
+        break;
+    }
 }
 
 
@@ -122,13 +179,20 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
 
     const uint8_t* payload = frame + radiotap_hdr->it_len + sizeof(ieee80211_hdr);
 
-    // Buffer is full, write it out and reset position
-    if( fc->index + payload_size >= fc->packet_buffer_size ) {
-        dump_packet_buffer(fc);
-    }
+    dxwifi_control_frame_t control_frame = check_frame_control(payload, payload_size, DXWIFI_FRAME_CONTROL_CHECK_THRESHOLD);
 
-    memcpy(fc->packet_buffer + fc->index, payload, payload_size);
-    fc->index += payload_size;
+    if ( control_frame != CONTROL_FRAME_NONE ) {
+        handle_frame_control(fc, control_frame);
+    }
+    else {
+        // Buffer is full, write it out and reset position
+        if( fc->index + payload_size >= fc->packet_buffer_size ) {
+            dump_packet_buffer(fc);
+        }
+
+        memcpy(fc->packet_buffer + fc->index, payload, payload_size);
+        fc->index += payload_size;
+    }
 
     // TODO add radiotap and mac header to stats
     log_packet_stats(pkt_stats, frame);
@@ -196,7 +260,7 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     log_info("Starting packet capture...");
     rx->__activated = true;
-    while(rx->__activated) {
+    while(rx->__activated && !fc.eot_reached) {
 
         status = poll(&request, 1, rx->capture_timeout * 1000);
         if (status == 0) {
@@ -212,10 +276,10 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
         else {
             num_packets += pcap_dispatch(rx->__handle, rx->dispatch_count, process_frame, (uint8_t*)&fc);
         }
+
     }
 
-    // TODO write sequentially by packet order 
-    write(fc.fd, fc.packet_buffer, fc.index);
+    dump_packet_buffer(&fc);
 
     teardown_frame_controller(&fc);
 
