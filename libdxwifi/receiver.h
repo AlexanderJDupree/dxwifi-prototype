@@ -7,12 +7,16 @@
 
 #include <pcap.h>
 
+#include <libdxwifi/dxwifi.h>
+
+
 /************************
  *  Constants
  ***********************/
 
 #define DXWIFI_RX_PACKET_BUFFER_SIZE_MIN 1024
 #define DXWIFI_RX_PACKET_BUFFER_SIZE_MAX (1024 * 1024)
+#define DXWIFI_RX_PACKET_HEAP_SIZE ((DXWIFI_RX_PACKET_BUFFER_SIZE_MAX / DXWIFI_BLOCK_SIZE_MIN) + 1)
 
 
 /************************
@@ -34,6 +38,14 @@ typedef struct {
     volatile bool   __activated;            /* Currently capturing packets?                 */
     pcap_t*         __handle;               /* Session handle for PCAP                      */
 } dxwifi_receiver;
+
+
+typedef struct {
+    uint32_t    frame_number;               /* The number of the frame data was sent with   */
+    uint8_t*    data;                       /* Frame payload data                           */
+    size_t      size;                       /* Size of the payload data                     */
+    bool        crc_valid;                  /* Was the attached crc correct?                */
+} dxwifi_rx_packet;
 
 
 /************************

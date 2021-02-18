@@ -12,17 +12,20 @@
 
 #include <libdxwifi/dxwifi.h>
 #include <libdxwifi/receiver.h>
+#include <libdxwifi/details/heap.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/logging.h>
 #include <libdxwifi/details/ieee80211.h>
 
 
 typedef struct {
-    uint8_t*    packet_buffer;
-    size_t      index;
-    size_t      packet_buffer_size;
-    bool        eot_reached;
-    int         fd;
+    dxwifi_packet_heap  heap;
+    uint8_t*            packet_buffer;
+    size_t              index;
+    size_t              count;
+    size_t              packet_buffer_size;
+    bool                eot_reached;
+    int                 fd;
 } frame_controller;
 
 
@@ -48,21 +51,21 @@ static void log_rx_configuration(const dxwifi_receiver* rx) {
 }
 
 
-static void log_packet_stats(const struct pcap_pkthdr* pkt_stats, const uint8_t* data) {
+static void log_frame_stats(const struct pcap_pkthdr* frame_stats, const uint8_t* data) {
 
     char timestamp[64];
     struct tm *time;
 
-    time = gmtime(&pkt_stats->ts.tv_sec);
+    time = gmtime(&frame_stats->ts.tv_sec);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
 
     log_debug(
         "(%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
         timestamp, 
-        pkt_stats->caplen, 
-        pkt_stats->len
+        frame_stats->caplen, 
+        frame_stats->len
         );
-    log_hexdump(data, pkt_stats->caplen);
+    log_hexdump(data, frame_stats->caplen);
 }
 
 
@@ -91,11 +94,14 @@ static void log_capture_stats(dxwifi_receiver* rx) {
 static void init_frame_controller(frame_controller* fc, size_t buffsize) {
     debug_assert(fc && buffsize > 0);
 
+    fc->index = 0;
+    fc->count = 0;
+    fc->eot_reached = false;
     fc->packet_buffer_size = buffsize;
     fc->packet_buffer = calloc(fc->packet_buffer_size, sizeof(uint8_t));
     assert_M(fc->packet_buffer, "Failed to allocated Packet Buffer of size: %ld", fc->packet_buffer_size);
 
-    fc->index = 0;
+    init_packet_heap(&fc->heap, DXWIFI_RX_PACKET_HEAP_SIZE, false);
 }
 
 
@@ -106,6 +112,26 @@ static void teardown_frame_controller(frame_controller* fc) {
     fc->packet_buffer = NULL;
     fc->packet_buffer_size = 0;
     fc->index = 0;
+}
+
+
+static void dump_packet(frame_controller* fc, const uint8_t* payload, size_t payload_size, const ieee80211_hdr* mac_hdr) {
+
+    dxwifi_rx_packet packet;
+
+    memcpy(fc->packet_buffer + fc->index, payload, payload_size);
+
+    packet.frame_number = ntohl(*(uint32_t*)mac_hdr->addr1);
+    packet.data         = fc->packet_buffer + fc->index;
+    packet.size         = payload_size;
+    packet.crc_valid    = false; // TODO verify CRC;
+
+    fc->index += payload_size;
+    fc->count += 1;
+
+    log_info("Frame number: %d", packet.frame_number);
+
+    packet_heap_push(&fc->heap, packet);
 }
 
 
@@ -158,7 +184,7 @@ static void handle_frame_control(frame_controller* fc, dxwifi_control_frame_t ty
         break;
 
     case CONTROL_FRAME_END_OF_TRANSMISSION:
-        log_info("EOT reached");
+        log_info("End-Of-Transmission signalled");
         fc->eot_reached = true;
         break;
     
@@ -175,6 +201,8 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
 
     const struct ieee80211_radiotap_header* radiotap_hdr = (struct ieee80211_radiotap_header*) frame;
 
+    const ieee80211_hdr* mac_hdr = (ieee80211_hdr*) (frame + radiotap_hdr->it_len);
+
     size_t payload_size = pkt_stats->caplen - radiotap_hdr->it_len - sizeof(ieee80211_hdr) - IEEE80211_FCS_SIZE;
 
     const uint8_t* payload = frame + radiotap_hdr->it_len + sizeof(ieee80211_hdr);
@@ -190,13 +218,12 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
             dump_packet_buffer(fc);
         }
 
-        memcpy(fc->packet_buffer + fc->index, payload, payload_size);
-        fc->index += payload_size;
+        dump_packet(fc, payload, payload_size, mac_hdr);
+
     }
 
     // TODO add radiotap and mac header to stats
-    log_packet_stats(pkt_stats, frame);
-
+    log_frame_stats(pkt_stats, frame);
 };
 
 
@@ -260,7 +287,7 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     log_info("Starting packet capture...");
     rx->__activated = true;
-    while(rx->__activated && !fc.eot_reached) {
+    while(rx->__activated) {
 
         status = poll(&request, 1, rx->capture_timeout * 1000);
         if (status == 0) {
