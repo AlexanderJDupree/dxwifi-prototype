@@ -56,7 +56,7 @@ specific target with
 cmake --build --target dxwifi
 ```
 
-**Note**: If you're using VSCode I *hightly* recommend just using the 
+**Note**: If you're using VSCode I *highly* recommend just using the 
 [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
 extension. 
 
