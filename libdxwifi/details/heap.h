@@ -12,7 +12,7 @@
 typedef struct {
     dxwifi_rx_packet*   packets;        /* Heap data                        */
     size_t              count;          /* Number of packets in the heap    */
-    size_t              heap_size;      /* Heap capacity                    */
+    size_t              capacity;       /* Heap capacity                    */
     bool                is_max_heap;   
 } dxwifi_packet_heap;
 

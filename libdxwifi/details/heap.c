@@ -37,10 +37,10 @@ static void heapify(dxwifi_packet_heap* heap, comparator compare, size_t i) {
     size_t r = right(i);
     size_t new_index = i;
 
-    if(l < heap->heap_size && compare(&heap->packets[l], &heap->packets[i])) {
+    if(l < heap->count && compare(&heap->packets[l], &heap->packets[i])) {
         new_index = l;
     }
-    if(r < heap->heap_size && compare(&heap->packets[r], &heap->packets[new_index])) {
+    if(r < heap->count && compare(&heap->packets[r], &heap->packets[new_index])) {
         new_index = r;
     }
     if(new_index != i) {
@@ -54,7 +54,7 @@ void init_packet_heap(dxwifi_packet_heap* heap, size_t capacity, bool is_max_hea
     debug_assert(heap);
 
     heap->count         = 0; 
-    heap->heap_size     = capacity;
+    heap->capacity      = capacity;
     heap->is_max_heap   = is_max_heap;
 
     heap->packets = calloc(capacity, sizeof(dxwifi_rx_packet));
@@ -66,7 +66,7 @@ void packet_heap_push(dxwifi_packet_heap* heap, dxwifi_rx_packet packet) {
 
     comparator compare = (heap->is_max_heap) ? greater_than : less_than;
 
-    if(heap->count < heap->heap_size) {
+    if(heap->count < heap->capacity) {
         size_t i = heap->count;
         heap->packets[heap->count++] = packet;
 
@@ -92,7 +92,7 @@ dxwifi_rx_packet packet_heap_pop(dxwifi_packet_heap* heap) {
 
         packet = heap->packets[0];
 
-        swap(&heap->packets[0], &heap->packets[--heap->count]);
+        heap->packets[0] = heap->packets[--heap->count];
 
         heapify(heap, compare, 0);
     }
