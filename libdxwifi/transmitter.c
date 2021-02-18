@@ -83,8 +83,10 @@ static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_cont
 
     mac->duration_id = htons(duration_id);
 
-    memset(mac->addr1, 0, IEEE80211_MAC_ADDR_LEN);
-    memset(mac->addr3, 0, IEEE80211_MAC_ADDR_LEN);
+    // Note to future developers, the first two bytes of addr1 CANNOT be 0x00. 
+    // If it is the WiFi card will attempt to retransmit the packet multiple times. 
+    memset(mac->addr1, 0xff, IEEE80211_MAC_ADDR_LEN);
+    memset(mac->addr3, 0xff, IEEE80211_MAC_ADDR_LEN);
 
     memcpy(mac->addr2, sender_address, IEEE80211_MAC_ADDR_LEN);
 
@@ -126,8 +128,12 @@ static void send_control_frame(dxwifi_transmitter* tx, dxwifi_tx_frame* data_fra
 
 static void attach_sequence_data(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size) {
     (void)payload_size;
-    memset(frame->mac_hdr->addr1, 0x00, IEEE80211_MAC_ADDR_LEN);
-    uint32_t* addr1 = (uint32_t*) frame->mac_hdr->addr1;
+
+    // For some reason, if the first two bytes of the first address are 0x00 then the WiFi adpater
+    // will retransmit the packet multiple times. Therefore, we can only stuff the frame number in 
+    // the bottom four bytes.
+
+    uint32_t* addr1 = (uint32_t*) &frame->mac_hdr->addr1[2]; 
     *addr1 = htonl(frame_no);
 }
 

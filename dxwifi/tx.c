@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
             .transmit_timeout   = -1,
             .rtap_flags         = IEEE80211_RADIOTAP_F_FCS,
             .rtap_rate          = 1,
-            .rtap_tx_flags      = IEEE80211_RADIOTAP_F_TX_NOACK | IEEE80211_RADIOTAP_F_TX_ORDER,
+            .rtap_tx_flags      = IEEE80211_RADIOTAP_F_TX_NOACK,
 
             // Frame control isn't hooked up to the CLI yet
             .fctl  = {

@@ -122,7 +122,7 @@ static void dump_packet(frame_controller* fc, const uint8_t* payload, size_t pay
 
     memcpy(fc->packet_buffer + fc->index, payload, payload_size);
 
-    packet.frame_number = ntohl(*(uint32_t*)mac_hdr->addr1);
+    packet.frame_number = ntohl(*(uint32_t*)(mac_hdr->addr1 + 2));
     packet.data         = fc->packet_buffer + fc->index;
     packet.size         = payload_size;
     packet.crc_valid    = false; // TODO verify CRC;
@@ -220,7 +220,6 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
         }
 
         dump_packet(fc, payload, payload_size, mac_hdr);
-
     }
 
     // TODO add radiotap and mac header to stats
