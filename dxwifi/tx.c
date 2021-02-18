@@ -156,7 +156,7 @@ static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode",    DXWIFI_TX_GROUP },
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file",                              DXWIFI_TX_GROUP },
     { "timeout",    't',    "<seconds>",            0,  "Length of time in seconds to wait for an available read from file",        DXWIFI_TX_GROUP },
-    { "delay",      'u',      "<useconds>",           0,  "Length of time in microseconds to delay between transmission blocks",      DXWIFI_TX_GROUP },
+    { "delay",      'u',    "<useconds>",           0,  "Length of time in microseconds to delay between transmission blocks",      DXWIFI_TX_GROUP },
 
     { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_HEADER_GROUP },
     { "sender",   GET_KEY(1, MAC_HEADER_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)", MAC_HEADER_GROUP },

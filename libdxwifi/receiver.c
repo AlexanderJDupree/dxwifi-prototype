@@ -137,7 +137,11 @@ static void dump_packet(frame_controller* fc, const uint8_t* payload, size_t pay
 
 
 static void dump_packet_buffer(frame_controller* fc) {
-    write(fc->fd, fc->packet_buffer, fc->index);
+    dxwifi_rx_packet packet;
+    while(fc->heap.count > 0) {
+        packet = packet_heap_pop(&fc->heap);
+        write(fc->fd, packet.data, packet.size);
+    }
     fc->index = 0;
 }
 
