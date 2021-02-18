@@ -20,13 +20,14 @@
 
 
 typedef struct {
-    dxwifi_packet_heap  heap;
-    uint8_t*            packet_buffer;
-    size_t              index;
-    size_t              count;
-    size_t              packet_buffer_size;
-    bool                eot_reached;
-    int                 fd;
+    dxwifi_packet_heap  heap;                   /* Tracks packet frame number       */
+    uint8_t*            packet_buffer;          /* Buffer to copy all packet data   */
+    size_t              index;                  /* Index to next write position     */
+    size_t              count;                  /* Number of packets in the buffer  */
+    size_t              packet_buffer_size;     /* Size of the packet buffer        */
+    size_t              nbytes;                 /* Number of bytes written out      */
+    bool                eot_reached;            /* End of transmission?             */
+    int                 fd;                     /* Sink to write out data           */
 } frame_controller;
 
 
@@ -70,7 +71,7 @@ static void log_frame_stats(const struct pcap_pkthdr* frame_stats, const uint8_t
 }
 
 
-static void log_capture_stats(dxwifi_receiver* rx) {
+static void log_capture_stats(dxwifi_receiver* rx, frame_controller* fc) {
 
     struct pcap_stat capture_stats;
 
@@ -81,9 +82,11 @@ static void log_capture_stats(dxwifi_receiver* rx) {
         // WARNING! capture stats are inconsistent from platform to platform
         log_info(
             "Receiver Capture Stats\n"
+            "\tTotal Payload Size: %d\n"
             "\tPackets Received: %d\n"
             "\tPackets Dropped (Kernel): %d\n"
             "\tPackets Dropped (NIC): %d",
+            fc->nbytes,
             capture_stats.ps_recv,
             capture_stats.ps_drop,
             capture_stats.ps_ifdrop
@@ -95,8 +98,9 @@ static void log_capture_stats(dxwifi_receiver* rx) {
 static void init_frame_controller(frame_controller* fc, size_t buffsize) {
     debug_assert(fc && buffsize > 0);
 
-    fc->index = 0;
-    fc->count = 0;
+    fc->index  = 0;
+    fc->count  = 0;
+    fc->nbytes = 0;
     fc->eot_reached = false;
     fc->packet_buffer_size = buffsize;
     fc->packet_buffer = calloc(fc->packet_buffer_size, sizeof(uint8_t));
@@ -140,7 +144,7 @@ static void dump_packet_buffer(frame_controller* fc) {
     dxwifi_rx_packet packet;
     while(fc->heap.count > 0) {
         packet = packet_heap_pop(&fc->heap);
-        write(fc->fd, packet.data, packet.size);
+        fc->nbytes += write(fc->fd, packet.data, packet.size);
     }
     fc->index = 0;
 }
@@ -223,6 +227,7 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
             dump_packet_buffer(fc);
         }
 
+        // Copy packet data into buffer
         dump_packet(fc, payload, payload_size, mac_hdr);
     }
 
@@ -312,9 +317,9 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 
     dump_packet_buffer(&fc);
 
-    teardown_frame_controller(&fc);
+    log_capture_stats(rx, &fc);
 
-    log_capture_stats(rx);
+    teardown_frame_controller(&fc);
 
     return num_packets;
 }
