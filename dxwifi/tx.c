@@ -19,6 +19,7 @@
 typedef struct {
     int file;
     int verbosity;
+    unsigned delay;
     dxwifi_transmitter tx;
 } cli_args;
 
@@ -29,6 +30,7 @@ dxwifi_transmitter* transmitter = NULL;
 void sigint_handler(int signum);
 int parse_args(int argc, char** argv, cli_args* out);
 void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
+void delay_transmission(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user);
 
 
 int main(int argc, char** argv) {
@@ -38,6 +40,7 @@ int main(int argc, char** argv) {
     cli_args args = {
         .file                   = STDIN_FILENO,
         .verbosity              = DXWIFI_LOG_OFF,
+        .delay                  = 0,
         .tx = {
             .device             = "mon0",
             .block_size         = 512,
@@ -72,6 +75,10 @@ int main(int argc, char** argv) {
 
     init_transmitter(transmitter);
 
+    if (args.delay != 0) {
+        attach_preinject_handler(transmitter, delay_transmission, &args.delay);
+    }
+
     signal(SIGINT, sigint_handler);
 
     start_transmission(transmitter, args.file);
@@ -95,6 +102,13 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
     printf("[ %s ] : ", log_level_to_str(log_level));
     vprintf(fmt, args);
     printf("\n");
+}
+
+
+void delay_transmission(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user) {
+    unsigned delay = *(unsigned*)user;
+
+    usleep(delay);
 }
 
 
@@ -142,6 +156,7 @@ static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode",    DXWIFI_TX_GROUP },
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file",                              DXWIFI_TX_GROUP },
     { "timeout",    't',    "<seconds>",            0,  "Length of time in seconds to wait for an available read from file",        DXWIFI_TX_GROUP },
+    { "delay",      'u',      "<useconds>",           0,  "Length of time in microseconds to delay between transmission blocks",      DXWIFI_TX_GROUP },
 
     { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_HEADER_GROUP },
     { "sender",   GET_KEY(1, MAC_HEADER_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)", MAC_HEADER_GROUP },
@@ -176,6 +191,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     switch (key)
     {
+
     case 'd':
         args->tx.device = arg;
         break;
@@ -200,6 +216,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     case 'v':
         args->verbosity++;
+        break;
+
+    case 'u': 
+        args->delay = atoi(arg);
         break;
 
     case GET_KEY(1, MAC_HEADER_GROUP):

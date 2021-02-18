@@ -126,8 +126,8 @@ static void send_control_frame(dxwifi_transmitter* tx, dxwifi_tx_frame* data_fra
 }
 
 
-static void attach_sequence_data(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size) {
-    (void)payload_size;
+static void attach_sequence_data(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user) {
+    (void)payload_size; (void)user;
 
     // For some reason, if the first two bytes of the first address are 0x00 then the WiFi adpater
     // will retransmit the packet multiple times. Therefore, we can only stuff the frame number in 
@@ -182,7 +182,7 @@ void init_transmitter(dxwifi_transmitter* tx) {
     tx->__activated = false;
     tx->__preinject_handler_cnt = 0;
 
-    attach_preinject_handler(tx, attach_sequence_data);
+    attach_preinject_handler(tx, attach_sequence_data, NULL);
 
     tx->__handle = pcap_open_live(
                         tx->device, 
@@ -208,8 +208,13 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 }
 
 
-void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_handler handler) {
-    debug_assert(tx && handler);
+void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_cb callback, void* user) {
+    debug_assert(tx && callback);
+
+    dxwifi_preinject_handler handler = {
+        .callback    = callback,
+        .user_args   = user
+    };
 
     if( tx->__preinject_handler_cnt < DXWIFI_TX_FRAME_HANDLER_MAX) {
         tx->preinject_handlers[tx->__preinject_handler_cnt++] = handler;
@@ -267,7 +272,8 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
 
                 for (size_t i = 0; i < tx->__preinject_handler_cnt; i++)
                 {
-                    tx->preinject_handlers[i](&data_frame, tx_stats.frame_count, nbytes);
+                    dxwifi_preinject_handler handler = tx->preinject_handlers[i];
+                    handler.callback(&data_frame, tx_stats.frame_count, nbytes, handler.user_args);
                 }
                 
                 status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);

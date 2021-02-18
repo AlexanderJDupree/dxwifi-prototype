@@ -75,7 +75,12 @@ typedef struct {
     uint8_t                 *__frame;       /* The actual data frame        */
 } dxwifi_tx_frame;
 
-typedef void (*dxwifi_tx_frame_handler)(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size); 
+typedef void (*dxwifi_tx_frame_cb)(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user); 
+
+typedef struct {
+    dxwifi_tx_frame_cb      callback;
+    void*                   user_args;
+} dxwifi_preinject_handler;
 
 /**
  * The transmitter is responsible for handling file transmission. It is the 
@@ -94,7 +99,7 @@ typedef struct {
     uint16_t    rtap_tx_flags;                  /* Radiotap Tx flags        */
 
     ieee80211_frame_control fctl;               /* Frame control settings   */
-    dxwifi_tx_frame_handler preinject_handlers[DXWIFI_TX_FRAME_HANDLER_MAX]; 
+    dxwifi_preinject_handler preinject_handlers[DXWIFI_TX_FRAME_HANDLER_MAX]; 
                                                 /* called before injection  */
   
 
@@ -110,7 +115,7 @@ typedef struct {
 
 void init_transmitter(dxwifi_transmitter* transmitter);
 
-void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_handler handler);
+void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_cb callback, void* user);
 
 int start_transmission(dxwifi_transmitter* transmitter, int fd);
 
