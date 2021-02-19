@@ -98,7 +98,7 @@ typedef struct {
     uint8_t     rtap_rate;                      /* Radiotap data rate       */
     uint16_t    rtap_tx_flags;                  /* Radiotap Tx flags        */
 
-    ieee80211_frame_control fctl;               /* Frame control settings   */
+    ieee80211_frame_control  fctl;              /* Frame control settings   */
     dxwifi_preinject_handler preinject_handlers[DXWIFI_TX_FRAME_HANDLER_MAX]; 
                                                 /* called before injection  */
   

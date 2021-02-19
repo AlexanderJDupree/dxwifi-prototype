@@ -41,6 +41,8 @@
 #define DXWIFI_BLOCK_SIZE_MIN (DXWIFI_FRAME_CONTROL_DATA_SIZE + 1)
 #define DXWIFI_BLOCK_SIZE_MAX 1400
 
+#define DXWIFI_NOISE_VALUE 0xff
+
 /************************
  *  Types
  ***********************/

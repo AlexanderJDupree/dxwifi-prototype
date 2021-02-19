@@ -41,7 +41,7 @@ typedef struct {
 
 
 typedef struct {
-    uint32_t    frame_number;               /* The number of the frame data was sent with   */
+    int32_t     frame_number;               /* The number of the frame data was sent with   */
     uint8_t*    data;                       /* Frame payload data                           */
     size_t      size;                       /* Size of the payload data                     */
     bool        crc_valid;                  /* Was the attached crc correct?                */

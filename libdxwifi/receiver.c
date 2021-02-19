@@ -20,15 +20,25 @@
 
 
 typedef struct {
-    dxwifi_packet_heap  heap;                   /* Tracks packet frame number       */
+    binary_heap         packet_heap;            /* Tracks packet frame number       */
     uint8_t*            packet_buffer;          /* Buffer to copy all packet data   */
     size_t              index;                  /* Index to next write position     */
     size_t              count;                  /* Number of packets in the buffer  */
+    size_t              blocks_lost;            /* Detected number of lost data     */
     size_t              packet_buffer_size;     /* Size of the packet buffer        */
-    size_t              nbytes;                 /* Number of bytes written out      */
+    size_t              nbytes_data;            /* Number of data bytes written out */
+    size_t              nbytes_noise;           /* Number of noise bytes written out*/
     bool                eot_reached;            /* End of transmission?             */
     int                 fd;                     /* Sink to write out data           */
 } frame_controller;
+
+
+static bool order_by_frame_number_desc(const uint8_t* lhs, const uint8_t* rhs) {
+    dxwifi_rx_packet* packet1 = (dxwifi_rx_packet*) lhs;
+    dxwifi_rx_packet* packet2 = (dxwifi_rx_packet*) rhs;
+
+    return packet1->frame_number < packet2->frame_number;
+}
 
 
 static void log_rx_configuration(const dxwifi_receiver* rx) {
@@ -37,33 +47,41 @@ static void log_rx_configuration(const dxwifi_receiver* rx) {
             "DxWifi Receiver Settings\n"
             "\tDevice:                   %s\n"
             "\tPacket Buffer Size:       %ld\n"
+            "\tCapture Timeout:          %ds\n"
             "\tFilter:                   %s\n"
             "\tOptimize:                 %d\n"
             "\tSnapshot Length:          %d\n"
             "\tPacket Buffer Timeout:    %dms\n"
+            "\tDispatch Count:           %d\n"
             "\tDatalink Type:            %s\n",
             rx->device,
             rx->packet_buffer_size,
+            rx->capture_timeout,
             rx->filter,
             rx->optimize,
             rx->snaplen,
             rx->packet_buffer_timeout,
+            rx->dispatch_count,
             pcap_datalink_val_to_description(datalink)
     );
 }
 
 
-static void log_frame_stats(const struct pcap_pkthdr* frame_stats, const uint8_t* data) {
+static void log_frame_stats(const struct pcap_pkthdr* frame_stats, const uint8_t* data, const ieee80211_hdr* mac_hdr) {
 
     char timestamp[64];
     struct tm *time;
+
+    uint32_t frame_number = ntohl(*(uint32_t*)(mac_hdr->addr1 + 2));
 
     time = gmtime(&frame_stats->ts.tv_sec);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", time);
 
     log_debug(
-        "(%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
+        "%d: (%s:%d) - (Capture Length, Packet Length) = (%d, %d)", 
+        frame_number,
         timestamp, 
+        frame_stats->ts.tv_usec,
         frame_stats->caplen, 
         frame_stats->len
         );
@@ -73,40 +91,43 @@ static void log_frame_stats(const struct pcap_pkthdr* frame_stats, const uint8_t
 
 static void log_capture_stats(dxwifi_receiver* rx, frame_controller* fc) {
 
-    struct pcap_stat capture_stats;
+    struct pcap_stat capture_stats = { 0 };
 
     if(pcap_stats(rx->__handle, &capture_stats) == PCAP_ERROR) {
-        log_info("Failed to gather capture statistics");
+        log_info("Failed to gather capture statistics from PCAP");
     }
-    else {
-        // WARNING! capture stats are inconsistent from platform to platform
-        log_info(
-            "Receiver Capture Stats\n"
-            "\tTotal Payload Size: %d\n"
-            "\tPackets Received: %d\n"
-            "\tPackets Dropped (Kernel): %d\n"
-            "\tPackets Dropped (NIC): %d",
-            fc->nbytes,
-            capture_stats.ps_recv,
-            capture_stats.ps_drop,
-            capture_stats.ps_ifdrop
-            );
-    }
+    log_info(
+        "Receiver Capture Stats\n"
+        "\tTotal Payload Size: %d\n"
+        "\tNoise Added: %d\n"
+        "\tData Blocks Lost: %d\n"
+        "\tPackets Received: %d\n"
+        "\tPackets Dropped (Kernel): %d\n"
+        "\tPackets Dropped (NIC): %d",
+        fc->nbytes_data,
+        fc->nbytes_noise,
+        fc->blocks_lost,
+        capture_stats.ps_recv,
+        capture_stats.ps_drop,
+        capture_stats.ps_ifdrop
+        );
 }
 
 
 static void init_frame_controller(frame_controller* fc, size_t buffsize) {
     debug_assert(fc && buffsize > 0);
 
-    fc->index  = 0;
-    fc->count  = 0;
-    fc->nbytes = 0;
-    fc->eot_reached = false;
+    fc->index           = 0;
+    fc->count           = 0;
+    fc->blocks_lost     = 0;
+    fc->nbytes_data     = 0;
+    fc->nbytes_noise    = 0;
+    fc->eot_reached     = false;
     fc->packet_buffer_size = buffsize;
     fc->packet_buffer = calloc(fc->packet_buffer_size, sizeof(uint8_t));
     assert_M(fc->packet_buffer, "Failed to allocated Packet Buffer of size: %ld", fc->packet_buffer_size);
 
-    init_packet_heap(&fc->heap, DXWIFI_RX_PACKET_HEAP_SIZE, false);
+    init_heap(&fc->packet_heap, DXWIFI_RX_PACKET_HEAP_SIZE, sizeof(dxwifi_rx_packet), order_by_frame_number_desc);
 }
 
 
@@ -114,9 +135,13 @@ static void teardown_frame_controller(frame_controller* fc) {
     debug_assert(fc);
 
     free(fc->packet_buffer);
-    fc->packet_buffer = NULL;
-    fc->packet_buffer_size = 0;
-    fc->index = 0;
+    teardown_heap(&fc->packet_heap);
+    fc->packet_buffer       = NULL;
+    fc->packet_buffer_size  = 0;
+    fc->index               = 0;
+    fc->blocks_lost         = 0;
+    fc->nbytes_noise        = 0;
+    fc->eot_reached         = false;
 }
 
 
@@ -134,17 +159,35 @@ static void dump_packet(frame_controller* fc, const uint8_t* payload, size_t pay
     fc->index += payload_size;
     fc->count += 1;
 
-    log_info("Frame number: %d", packet.frame_number);
-
-    packet_heap_push(&fc->heap, packet);
+    heap_push(&fc->packet_heap, &packet);
 }
 
 
 static void dump_packet_buffer(frame_controller* fc) {
+    debug_assert(fc);
+
     dxwifi_rx_packet packet;
-    while(fc->heap.count > 0) {
-        packet = packet_heap_pop(&fc->heap);
-        fc->nbytes += write(fc->fd, packet.data, packet.size);
+    int32_t expected_frame = ((dxwifi_rx_packet*)fc->packet_heap.tree)->frame_number;
+
+    while(heap_pop(&fc->packet_heap, &packet)) {
+
+        // Data block is missing
+        if (expected_frame !=  packet.frame_number)
+        {
+            uint8_t noise[packet.size];
+
+            int missing_blocks = (packet.frame_number - expected_frame);
+
+            memset(noise, DXWIFI_NOISE_VALUE, sizeof(noise));
+
+            for(int i = 0; i < missing_blocks; ++i) {
+                fc->nbytes_noise += write(fc->fd, noise, sizeof(noise));
+            }
+            fc->blocks_lost += missing_blocks;
+        }
+        expected_frame = packet.frame_number + 1;
+        
+        fc->nbytes_data += write(fc->fd, packet.data, packet.size);
     }
     fc->index = 0;
 }
@@ -229,10 +272,11 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
 
         // Copy packet data into buffer
         dump_packet(fc, payload, payload_size, mac_hdr);
+
+        // TODO add radiotap and mac header to stats
+        log_frame_stats(pkt_stats, frame, mac_hdr);
     }
 
-    // TODO add radiotap and mac header to stats
-    log_frame_stats(pkt_stats, frame);
 };
 
 
@@ -328,6 +372,7 @@ int receiver_activate_capture(dxwifi_receiver* rx, int fd) {
 void receiver_stop_capture(dxwifi_receiver* receiver) {
     if(receiver) {
         log_info("DxWiFi Receiver capture ended");
+        pcap_breakloop(receiver->__handle);
         receiver->__activated = false;
     }
 }

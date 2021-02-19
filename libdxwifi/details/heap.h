@@ -1,25 +1,33 @@
 /**
- * DxWiFi Packet Heap data structure
+ * DxWiFi Binary Heap data structure
  */
 
-#ifndef LIBDXWIFI_PACKET_HEAP_H
-#define LIBDXWIFI_PACKET_HEAP_H
+#ifndef LIBDXWIFI_BINARY_HEAP_H
+#define LIBDXWIFI_BINARY_HEAP_H
 
+#include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 
-#include <libdxwifi/receiver.h>
+
+typedef bool (*comparator)(const uint8_t* lhs, const uint8_t* rhs);
+
 
 typedef struct {
-    dxwifi_rx_packet*   packets;        /* Heap data                        */
-    size_t              count;          /* Number of packets in the heap    */
-    size_t              capacity;       /* Heap capacity                    */
-    bool                is_max_heap;   
-} dxwifi_packet_heap;
+    uint8_t*    tree;       /* Heap data                                    */
+    size_t      count;      /* Number of elements currently in the heap     */
+    size_t      capacity;   /* Number of elements that can fit into tree    */
+    size_t      step_size;  /* Size of each element in the heap             */
+    comparator  compare;    /* Ordering function                            */
+} binary_heap;
 
-void init_packet_heap(dxwifi_packet_heap* heap, size_t capacity, bool is_max_heap);
 
-void packet_heap_push(dxwifi_packet_heap* heap, dxwifi_rx_packet packet);
+void init_heap(binary_heap* heap, size_t capacity, size_t step_size, comparator compare);
 
-dxwifi_rx_packet packet_heap_pop(dxwifi_packet_heap* heap);
+void teardown_heap(binary_heap* heap);
 
-#endif // LIBDXWIFI_PACKET_HEAP_H
+void heap_push(binary_heap* heap, const void* packet);
+
+bool heap_pop(binary_heap* heap, void* out);
+
+#endif // LIBDXWIFI_BINARY_HEAP_H
