@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     cli_args args = {
         .file                       = STDOUT_FILENO,
         .append                     = 0,
-        .verbosity                  = DXWIFI_LOG_OFF,
+        .verbosity                  = DXWIFI_LOG_INFO,
         .rx = {
             .device                 = "mon0",
             .dispatch_count         = 5,
@@ -99,7 +99,7 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  */
 
 #define DXWIFI_RX_GROUP     0
-#define PCAP_SETTINGS_GROUP 100
+#define PCAP_SETTINGS_GROUP 500
 #define CLI_GROUP_LAST      PCAP_SETTINGS_GROUP + 1
 
 #define GET_KEY(x, group) (x + group)
@@ -116,7 +116,7 @@ static char doc[] =
 static struct argp_option opts[] = {
     { "dev",            'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode",  DXWIFI_RX_GROUP },
     { "timeout",        't',    "<seconds>",            0,  "Length of time, in seconds, to wait for a packet (default: infinity)",     DXWIFI_RX_GROUP },
-    { "buffsize",       's',    "<seconds>",            0,  "Size of intermediate packet buffer in bytes",                              DXWIFI_RX_GROUP },
+    { "buffsize",       's',    "<nbytes>",             0,  "Size of intermediate packet buffer in bytes",                              DXWIFI_RX_GROUP },
     { "dispatch-count", 'c',    "<number>",             0,  "Number of packets to process at a time",                                   DXWIFI_RX_GROUP },
     { "append",         'a',    0,                      0,  "Open file in append mode",                                                 DXWIFI_RX_GROUP },
 
