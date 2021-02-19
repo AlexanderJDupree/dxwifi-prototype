@@ -37,11 +37,12 @@ int main(int argc, char** argv) {
     cli_args args = {
         .file                       = STDOUT_FILENO,
         .append                     = 0,
-        .verbosity                  = DXWIFI_LOG_OFF,
+        .verbosity                  = DXWIFI_LOG_INFO,
         .rx = {
             .device                 = "mon0",
             .dispatch_count         = 5,
             .capture_timeout        = -1,
+            .packet_buffer_size     = DXWIFI_RX_PACKET_BUFFER_SIZE_MAX,
             .filter                 = "wlan addr2 aa:aa:aa:aa:aa:aa",
             .optimize               = true,
             .snaplen                = SNAPLEN_MAX,
@@ -98,8 +99,10 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  */
 
 #define DXWIFI_RX_GROUP     0
-#define PCAP_SETTINGS_GROUP 100
+#define PCAP_SETTINGS_GROUP 500
 #define CLI_GROUP_LAST      PCAP_SETTINGS_GROUP + 1
+
+#define GET_KEY(x, group) (x + group)
 
 
 const char* argp_program_version     = DXWIFI_VERSION;
@@ -113,14 +116,15 @@ static char doc[] =
 static struct argp_option opts[] = {
     { "dev",            'd',    "<network device>",     0,  "The interface to listen for packets on, must be enabled in monitor mode",  DXWIFI_RX_GROUP },
     { "timeout",        't',    "<seconds>",            0,  "Length of time, in seconds, to wait for a packet (default: infinity)",     DXWIFI_RX_GROUP },
+    { "buffsize",       's',    "<nbytes>",             0,  "Size of intermediate packet buffer in bytes",                              DXWIFI_RX_GROUP },
     { "dispatch-count", 'c',    "<number>",             0,  "Number of packets to process at a time",                                   DXWIFI_RX_GROUP },
     { "append",         'a',    0,                      0,  "Open file in append mode",                                                 DXWIFI_RX_GROUP },
 
-    { 0, 0,  0,  0, "Packet Capture Settings (https://www.tcpdump.org/manpages/pcap.3pcap.html)",           PCAP_SETTINGS_GROUP },
-    { "snaplen",        's',    "<bytes>",      OPTION_NO_USAGE,    "Snapshot length",                      PCAP_SETTINGS_GROUP },
-    { "buffer-timeout", 'b',    "<ms>",         OPTION_NO_USAGE,    "Packet buffer timeout",                PCAP_SETTINGS_GROUP },
-    { "filter",         'f',    "<string>",     OPTION_NO_USAGE,    "Berkely Packet Filter expression",     PCAP_SETTINGS_GROUP },
-    { "no-optimize",    'o',    0,              OPTION_NO_USAGE,    "Do not optimize the BPF expression",   PCAP_SETTINGS_GROUP },
+    { 0, 0,  0,  0, "Packet Capture Settings (https://www.tcpdump.org/manpages/pcap.3pcap.html)", PCAP_SETTINGS_GROUP },
+    { "snaplen",        GET_KEY(1, PCAP_SETTINGS_GROUP),    "<bytes>",      OPTION_NO_USAGE,    "Snapshot length",                      PCAP_SETTINGS_GROUP },
+    { "buffer-timeout", GET_KEY(2, PCAP_SETTINGS_GROUP),    "<ms>",         OPTION_NO_USAGE,    "Packet buffer timeout",                PCAP_SETTINGS_GROUP },
+    { "filter",         GET_KEY(3, PCAP_SETTINGS_GROUP),    "<string>",     OPTION_NO_USAGE,    "Berkely Packet Filter expression",     PCAP_SETTINGS_GROUP },
+    { "no-optimize",    GET_KEY(4, PCAP_SETTINGS_GROUP),    0,              OPTION_NO_USAGE,    "Do not optimize the BPF expression",   PCAP_SETTINGS_GROUP },
 
     { 0, 0,  0,  0, "Help options", CLI_GROUP_LAST },
     { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
@@ -153,23 +157,37 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         args->rx.dispatch_count = atoi(arg); // TODO error handling
         break;
 
+    case 's': 
+        args->rx.packet_buffer_size = atoi(arg);
+        if(  args->rx.packet_buffer_size < DXWIFI_RX_PACKET_BUFFER_SIZE_MIN 
+          || args->rx.packet_buffer_size > DXWIFI_RX_PACKET_BUFFER_SIZE_MAX ) {
+              argp_error(
+                  state, 
+                  "Packet Buffer size of `%s` not in range(%d, %d)\n",
+                  arg,
+                  DXWIFI_RX_PACKET_BUFFER_SIZE_MIN,
+                  DXWIFI_RX_PACKET_BUFFER_SIZE_MAX
+              );
+          }
+          break;
+
     case 'v':
         args->verbosity++;
         break;
 
-    case 's':
+    case GET_KEY(1, PCAP_SETTINGS_GROUP):
         args->rx.snaplen = atoi(arg); // TODO error handling
         break;
 
-    case 'b':
+    case GET_KEY(2, PCAP_SETTINGS_GROUP):
         args->rx.packet_buffer_timeout = atoi(arg); 
         break;
 
-    case 'f':
+    case GET_KEY(3, PCAP_SETTINGS_GROUP):
         args->rx.filter = arg;
         break;
 
-    case 'o':
+    case GET_KEY(4, PCAP_SETTINGS_GROUP):
         args->rx.optimize = false;
         break;
 

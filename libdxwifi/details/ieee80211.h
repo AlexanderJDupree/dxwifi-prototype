@@ -47,9 +47,24 @@
 struct ieee80211_hdr_3addr { 
     uint16_t    frame_control;  /* __le16 */
     uint16_t    duration_id;    /* __le16 */
+
+   /*
+   *  The following addresses can have different intreptations depenging on the 
+   *  state of the to_ds/from_ds flags in the frame control. By default we set
+   *  to_ds to 0 and from_ds to 1.
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   *  | To DS | From DS | Address 1   | Address 2   | Address 3   | Address 4 |
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   *  |     0 |       0 | Destination | Source      | BSSID       | N/A       |
+   *  |     0 |       1 | Destination | BSSID       | Source      | N/A       |
+   *  |     1 |       0 | BSSID       | Source      | Destination | N/A       |
+   *  |     1 |       1 | Receiver    | Transmitter | Destination | Source    |
+   *  +-------+---------+-------------+-------------+-------------+-----------+
+   */
     uint8_t     addr1[IEEE80211_MAC_ADDR_LEN];
     uint8_t     addr2[IEEE80211_MAC_ADDR_LEN];
     uint8_t     addr3[IEEE80211_MAC_ADDR_LEN];
+
     uint16_t    seq_ctrl;       /*__le16 */
 } __attribute__ ((packed));
 typedef struct ieee80211_hdr_3addr ieee80211_hdr;

@@ -18,6 +18,8 @@
 
 #define DXWIFI_TX_HEADER_SIZE (sizeof(dxwifi_tx_radiotap_hdr) + sizeof(ieee80211_hdr))
 
+#define DXWIFI_TX_FRAME_HANDLER_MAX 8
+
 #define DXWIFI_TX_RADIOTAP_PRESENCE_BIT_FIELD ( 0x1 << IEEE80211_RADIOTAP_FLAGS    \
                                               | 0x1 << IEEE80211_RADIOTAP_RATE     \
                                               | 0x1 << IEEE80211_RADIOTAP_TX_FLAGS)\
@@ -73,6 +75,12 @@ typedef struct {
     uint8_t                 *__frame;       /* The actual data frame        */
 } dxwifi_tx_frame;
 
+typedef void (*dxwifi_tx_frame_cb)(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user); 
+
+typedef struct {
+    dxwifi_tx_frame_cb      callback;
+    void*                   user_args;
+} dxwifi_preinject_handler;
 
 /**
  * The transmitter is responsible for handling file transmission. It is the 
@@ -84,30 +92,18 @@ typedef struct {
     size_t      block_size;                     /* Size in bytes to read    */
     int         transmit_timeout;               /* Seconds to wait for read */
 
+    uint8_t     address[IEEE80211_MAC_ADDR_LEN];/* Transmitter MAC addresss */
 
     uint8_t     rtap_flags;                     /* Radiotap flags           */
     uint8_t     rtap_rate;                      /* Radiotap data rate       */
     uint16_t    rtap_tx_flags;                  /* Radiotap Tx flags        */
 
-    ieee80211_frame_control fctl;               /* Frame control settings   */
+    ieee80211_frame_control  fctl;              /* Frame control settings   */
+    dxwifi_preinject_handler preinject_handlers[DXWIFI_TX_FRAME_HANDLER_MAX]; 
+                                                /* called before injection  */
   
-   /*
-   *  The following addresses can have different intreptations depenging on the 
-   *  state of the to_ds/from_ds flags in the frame control. By default we set
-   *  to_ds to 0 and from_ds to 1.
-   *  +-------+---------+-------------+-------------+-------------+-----------+
-   *  | To DS | From DS | Address 1   | Address 2   | Address 3   | Address 4 |
-   *  +-------+---------+-------------+-------------+-------------+-----------+
-   *  |     0 |       0 | Destination | Source      | BSSID       | N/A       |
-   *  |     0 |       1 | Destination | BSSID       | Source      | N/A       |
-   *  |     1 |       0 | BSSID       | Source      | Destination | N/A       |
-   *  |     1 |       1 | Receiver    | Transmitter | Destination | Source    |
-   *  +-------+---------+-------------+-------------+-------------+-----------+
-   */
-    uint8_t         addr1[IEEE80211_MAC_ADDR_LEN];
-    uint8_t         addr2[IEEE80211_MAC_ADDR_LEN];
-    uint8_t         addr3[IEEE80211_MAC_ADDR_LEN];
 
+    size_t          __preinject_handler_cnt;    /* Attached handlers count  */
     volatile bool   __activated;                /* Currently transmitting?  */
     pcap_t*         __handle;                   /* Session handle for PCAP  */
 } dxwifi_transmitter;
@@ -118,6 +114,8 @@ typedef struct {
  ***********************/
 
 void init_transmitter(dxwifi_transmitter* transmitter);
+
+void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_cb callback, void* user);
 
 int start_transmission(dxwifi_transmitter* transmitter, int fd);
 

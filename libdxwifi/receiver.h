@@ -7,9 +7,16 @@
 
 #include <pcap.h>
 
+#include <libdxwifi/dxwifi.h>
+
+
 /************************
  *  Constants
  ***********************/
+
+#define DXWIFI_RX_PACKET_BUFFER_SIZE_MIN 1024
+#define DXWIFI_RX_PACKET_BUFFER_SIZE_MAX (1024 * 1024)
+#define DXWIFI_RX_PACKET_HEAP_SIZE ((DXWIFI_RX_PACKET_BUFFER_SIZE_MAX / DXWIFI_BLOCK_SIZE_MIN) + 1)
 
 
 /************************
@@ -20,6 +27,7 @@ typedef struct {
     const char*     device;                 /* 802.11 interface name                        */
     unsigned        dispatch_count;         /* Number of packets to process at a time       */
     unsigned        capture_timeout;        /* Number of seconds to wait for a packet       */
+    size_t          packet_buffer_size;     /* Size of the packet buffer                    */
 
     // https://www.tcpdump.org/manpages/pcap.3pcap.html
     const char*     filter;                 /* BPF Program string                           */
@@ -30,6 +38,14 @@ typedef struct {
     volatile bool   __activated;            /* Currently capturing packets?                 */
     pcap_t*         __handle;               /* Session handle for PCAP                      */
 } dxwifi_receiver;
+
+
+typedef struct {
+    int32_t     frame_number;               /* The number of the frame data was sent with   */
+    uint8_t*    data;                       /* Frame payload data                           */
+    size_t      size;                       /* Size of the payload data                     */
+    bool        crc_valid;                  /* Was the attached crc correct?                */
+} dxwifi_rx_packet;
 
 
 /************************

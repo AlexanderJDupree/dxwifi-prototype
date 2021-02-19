@@ -5,6 +5,7 @@ project(libdxwifi)
 add_library(dxwifi STATIC 
             transmitter.c
             receiver.c
+            ${PROJECT_SOURCE_DIR}/details/heap.c
             ${PROJECT_SOURCE_DIR}/details/logging.c
             )   
 

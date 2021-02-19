@@ -63,8 +63,8 @@ static void construct_radiotap_header(dxwifi_tx_radiotap_hdr* radiotap_hdr, uint
 }
 
 
-static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_control fcntl, uint16_t duration_id, uint8_t* addr1, uint8_t* addr2, uint8_t* addr3) {
-    debug_assert(mac && addr1 && addr2 && addr3);
+static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_control fcntl, uint16_t duration_id, uint8_t* sender_address) {
+    debug_assert(mac && sender_address);
 
     uint16_t frame_control = 0x00;
 
@@ -83,11 +83,58 @@ static void construct_ieee80211_header( ieee80211_hdr* mac, ieee80211_frame_cont
 
     mac->duration_id = htons(duration_id);
 
-    memcpy(mac->addr1, addr1, IEEE80211_MAC_ADDR_LEN);
-    memcpy(mac->addr2, addr2, IEEE80211_MAC_ADDR_LEN);
-    memcpy(mac->addr3, addr3, IEEE80211_MAC_ADDR_LEN);
+    // Note to future developers, the first two bytes of addr1 CANNOT be 0x00. 
+    // If it is the WiFi card will attempt to retransmit the packet multiple times. 
+    memset(mac->addr1, 0xff, IEEE80211_MAC_ADDR_LEN);
+    memset(mac->addr3, 0xff, IEEE80211_MAC_ADDR_LEN);
+
+    memcpy(mac->addr2, sender_address, IEEE80211_MAC_ADDR_LEN);
 
     mac->seq_ctrl = 0;
+}
+
+
+static const char* control_frame_type_to_str(dxwifi_control_frame_t type) {
+    switch (type)
+    {
+    case CONTROL_FRAME_PREAMBLE:
+        return "Preamble";
+    
+    case CONTROL_FRAME_END_OF_TRANSMISSION:
+        return "EOT";
+
+    default:
+        return "Unknown control type";
+    }
+}
+
+
+static void send_control_frame(dxwifi_transmitter* tx, dxwifi_tx_frame* data_frame, dxwifi_control_frame_t type) {
+    debug_assert(tx && tx->__handle && data_frame && data_frame->__frame);
+
+    uint8_t control_data[DXWIFI_FRAME_CONTROL_DATA_SIZE];
+
+    memset(control_data, type, DXWIFI_FRAME_CONTROL_DATA_SIZE);
+
+    memcpy(data_frame->payload, control_data, DXWIFI_FRAME_CONTROL_DATA_SIZE);
+
+    // TODO add redundancy and send multiple times?
+    int status = pcap_inject(tx->__handle, data_frame->__frame, DXWIFI_TX_HEADER_SIZE + sizeof(control_data) + IEEE80211_FCS_SIZE);
+
+    log_info("%s Frame Sent: %d", control_frame_type_to_str(type), status);
+    log_hexdump(data_frame->__frame, DXWIFI_TX_HEADER_SIZE + sizeof(control_data) + IEEE80211_FCS_SIZE);
+}
+
+
+static void attach_sequence_data(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user) {
+    (void)payload_size; (void)user;
+
+    // For some reason, if the first two bytes of the first address are 0x00 then the WiFi adpater
+    // will retransmit the packet multiple times. Therefore, we can only stuff the frame number in 
+    // the bottom four bytes.
+
+    uint32_t* addr1 = (uint32_t*) &frame->mac_hdr->addr1[2]; 
+    *addr1 = htonl(frame_no);
 }
 
 
@@ -113,6 +160,7 @@ static void log_frame_stats(const dxwifi_tx_frame* frame, size_t bytes_read, siz
     log_hexdump(frame->__frame, DXWIFI_TX_HEADER_SIZE + bytes_read + IEEE80211_FCS_SIZE);
 }
 
+
 static void log_tx_stats(dxwifi_tx_stats stats) {
     log_info(
         "Transmission Stats\n"
@@ -130,6 +178,11 @@ void init_transmitter(dxwifi_transmitter* tx) {
     debug_assert(tx);
 
     char err_buff[PCAP_ERRBUF_SIZE];
+
+    tx->__activated = false;
+    tx->__preinject_handler_cnt = 0;
+
+    attach_preinject_handler(tx, attach_sequence_data, NULL);
 
     tx->__handle = pcap_open_live(
                         tx->device, 
@@ -155,6 +208,23 @@ void close_transmitter(dxwifi_transmitter* transmitter) {
 }
 
 
+void attach_preinject_handler(dxwifi_transmitter* tx, dxwifi_tx_frame_cb callback, void* user) {
+    debug_assert(tx && callback);
+
+    dxwifi_preinject_handler handler = {
+        .callback    = callback,
+        .user_args   = user
+    };
+
+    if( tx->__preinject_handler_cnt < DXWIFI_TX_FRAME_HANDLER_MAX) {
+        tx->preinject_handlers[tx->__preinject_handler_cnt++] = handler;
+    } 
+    else {
+        log_error("Maxmimum number of handlers already attached to transmitter");
+    }
+}
+
+
 int start_transmission(dxwifi_transmitter* tx, int fd) {
     debug_assert(tx && tx->__handle);
 
@@ -174,10 +244,14 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
 
     construct_radiotap_header(data_frame.radiotap_hdr, tx->rtap_flags, tx->rtap_rate, tx->rtap_tx_flags);
 
-    construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, DXWIFI_TX_DURATION_ID, tx->addr1, tx->addr2, tx->addr3);
+    construct_ieee80211_header(data_frame.mac_hdr, tx->fctl, DXWIFI_TX_DURATION_ID, tx->address);
 
     log_info("Starting transmission...");
+
     tx->__activated = true;
+
+    send_control_frame(tx, &data_frame, CONTROL_FRAME_PREAMBLE);
+
     do
     {
         status = poll(&request, 1, tx->transmit_timeout * 1000);
@@ -195,6 +269,13 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
         else {
             nbytes = read(fd, data_frame.payload, tx->block_size);
             if(nbytes > 0) {
+
+                for (size_t i = 0; i < tx->__preinject_handler_cnt; i++)
+                {
+                    dxwifi_preinject_handler handler = tx->preinject_handlers[i];
+                    handler.callback(&data_frame, tx_stats.frame_count, nbytes, handler.user_args);
+                }
+                
                 status = pcap_inject(tx->__handle, data_frame.__frame, DXWIFI_TX_HEADER_SIZE + nbytes + IEEE80211_FCS_SIZE);
 
                 debug_assert_continue(status > 0, "Injection failure: %s", pcap_statustostr(status));
@@ -207,6 +288,8 @@ int start_transmission(dxwifi_transmitter* tx, int fd) {
             }
         }
     } while (tx->__activated && nbytes > 0);
+
+    send_control_frame(tx, &data_frame, CONTROL_FRAME_END_OF_TRANSMISSION);
 
     log_tx_stats(tx_stats);
     

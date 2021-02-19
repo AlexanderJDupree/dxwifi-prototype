@@ -19,6 +19,7 @@
 typedef struct {
     int file;
     int verbosity;
+    unsigned delay;
     dxwifi_transmitter tx;
 } cli_args;
 
@@ -29,6 +30,7 @@ dxwifi_transmitter* transmitter = NULL;
 void sigint_handler(int signum);
 int parse_args(int argc, char** argv, cli_args* out);
 void logger(enum dxwifi_log_level verbosity, const char* fmt, va_list args);
+void delay_transmission(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user);
 
 
 int main(int argc, char** argv) {
@@ -38,6 +40,7 @@ int main(int argc, char** argv) {
     cli_args args = {
         .file                   = STDIN_FILENO,
         .verbosity              = DXWIFI_LOG_OFF,
+        .delay                  = 0,
         .tx = {
             .device             = "mon0",
             .block_size         = 512,
@@ -61,9 +64,7 @@ int main(int argc, char** argv) {
                 .order              = false
             },
 
-            .addr1 = { 0x05, 0x05, 0x05, 0x05, 0x05, 0x05 },
-            .addr2 = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA },
-            .addr3 = { 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00 }
+            .address = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA },
         }
     };
     transmitter = &args.tx;
@@ -73,6 +74,10 @@ int main(int argc, char** argv) {
     init_logging(args.verbosity, logger);
 
     init_transmitter(transmitter);
+
+    if (args.delay != 0) {
+        attach_preinject_handler(transmitter, delay_transmission, &args.delay);
+    }
 
     signal(SIGINT, sigint_handler);
 
@@ -100,6 +105,13 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
 }
 
 
+void delay_transmission(dxwifi_tx_frame* frame, uint32_t frame_no, size_t payload_size, void* user) {
+    unsigned delay = *(unsigned*)user;
+
+    usleep(delay);
+}
+
+
 /************************
  *  CLI
  ***********************/
@@ -119,7 +131,7 @@ void logger(enum dxwifi_log_level log_level, const char* fmt, va_list args) {
  */
 
 #define DXWIFI_TX_GROUP             0
-#define MAC_ADDRESS_GROUP           500
+#define MAC_HEADER_GROUP           500
 #define RADIOTAP_FLAGS_GROUP        1500
 #define RADIOTAP_RATE_GROUP         2000
 #define RADIOTAP_TX_FLAGS_GROUP     2500
@@ -144,13 +156,12 @@ static struct argp_option opts[] = {
     { "dev",        'd',    "<network device>",     0,  "The interface to inject packets onto, must be enabled in monitor mode",    DXWIFI_TX_GROUP },
     { "blocksize",  'b',    "<blocksize>",          0,  "Size in bytes for each block read from file",                              DXWIFI_TX_GROUP },
     { "timeout",    't',    "<seconds>",            0,  "Length of time in seconds to wait for an available read from file",        DXWIFI_TX_GROUP },
+    { "delay",      'u',    "<useconds>",           0,  "Length of time in microseconds to delay between transmission blocks",      DXWIFI_TX_GROUP },
 
-    { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_ADDRESS_GROUP },
-    { "addr1",   GET_KEY(1, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (05:05:05:05:05:05)" },
-    { "addr2",   GET_KEY(2, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)" },
-    { "addr3",   GET_KEY(3, MAC_ADDRESS_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (FF:00:FF:00:FF:00)" },
+    { 0, 0,  0,  0, "IEEE80211 MAC Header Configuration Options", MAC_HEADER_GROUP },
+    { "sender",   GET_KEY(1, MAC_HEADER_GROUP), "<macaddr>", OPTION_NO_USAGE, "Default (AA:AA:AA:AA:AA:AA)", MAC_HEADER_GROUP },
 
-    { 0, 0,  0,  0, "Radiotap Header Configuration Options (WARN: The following fields are driver dependent and/or may not be supported by DxWifi",             RADIOTAP_FLAGS_GROUP },
+    { 0, 0,  0,  0, "Radiotap Header Configuration Options (WARN: The following fields are driver dependent and/or may not be supported by DxWifi)",            RADIOTAP_FLAGS_GROUP },
     { "cfp",            GET_KEY(IEEE80211_RADIOTAP_F_CFP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent during CFP",                        RADIOTAP_FLAGS_GROUP },
     { "short-preamble", GET_KEY(IEEE80211_RADIOTAP_F_SHORTPRE,      RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with short preamble",               RADIOTAP_FLAGS_GROUP },
     { "wep",            GET_KEY(IEEE80211_RADIOTAP_F_WEP,           RADIOTAP_FLAGS_GROUP),      0,  OPTION_NO_USAGE,  "Sent with WEP encryption",               RADIOTAP_FLAGS_GROUP },
@@ -161,7 +172,7 @@ static struct argp_option opts[] = {
 
     { "ack",            GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK,      RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx expects an ACK frame",                RADIOTAP_TX_FLAGS_GROUP },
     { "sequence",       GET_KEY(IEEE80211_RADIOTAP_F_TX_NOSEQNO,    RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx includes preconfigured sequence id",  RADIOTAP_TX_FLAGS_GROUP },
-    { "ordered",        GET_KEY(IEEE80211_RADIOTAP_F_TX_NOACK,      RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx should not be reordered",             RADIOTAP_TX_FLAGS_GROUP },
+    { "ordered",        GET_KEY(IEEE80211_RADIOTAP_F_TX_ORDER,      RADIOTAP_TX_FLAGS_GROUP),   0,  OPTION_NO_USAGE,  "Tx should not be reordered",             RADIOTAP_TX_FLAGS_GROUP },
 
     { 0, 0,  0,  0, "Help options", CLI_GROUP_LAST},
     { "verbose",    'v',    0,                      0,  "Verbosity level", CLI_GROUP_LAST},
@@ -180,6 +191,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
 
     switch (key)
     {
+
     case 'd':
         args->tx.device = arg;
         break;
@@ -189,8 +201,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         if( args->tx.block_size < DXWIFI_BLOCK_SIZE_MIN || args->tx.block_size > DXWIFI_BLOCK_SIZE_MAX) {
             argp_error(
                 state,
-                "blocksize of `%ld` not in range(%d,%d)\n", 
-                args->tx.block_size, 
+                "blocksize of `%s` not in range(%d,%d)\n", 
+                arg, 
                 DXWIFI_BLOCK_SIZE_MIN,
                 DXWIFI_BLOCK_SIZE_MAX
                 );
@@ -206,24 +218,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         args->verbosity++;
         break;
 
-    case GET_KEY(1, MAC_ADDRESS_GROUP):
-        if( !parse_mac_address(arg, args->tx.addr1))
-        {
-            argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
-            argp_usage(state);
-        }
+    case 'u': 
+        args->delay = atoi(arg);
         break;
 
-    case GET_KEY(2, MAC_ADDRESS_GROUP):
-        if( !parse_mac_address(arg, args->tx.addr2) )
-        {
-            argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
-            argp_usage(state);
-        }
-        break;
-
-    case GET_KEY(3, MAC_ADDRESS_GROUP):
-        if( !parse_mac_address(arg, args->tx.addr3) )
+    case GET_KEY(1, MAC_HEADER_GROUP):
+        if( !parse_mac_address(arg, args->tx.address) )
         {
             argp_error(state, "Mac address must be 6 octets in hexadecimal format delimited by a ':'");
             argp_usage(state);
