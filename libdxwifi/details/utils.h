@@ -1,117 +1,178 @@
 /**
- * DxWifi collection of utility macros/functions
+ *  utils.h
+ * 
+ *  DESCRIPTION: DxWiFi collection of utility macros/functions
+ * 
+ *  https://github.com/oresat/oresat-dxwifi-software
+ * 
  */
 
 #ifndef LIBDXWIFI_UTILITY_H
 #define LIBDXWIFI_UTILITY_H
 
-#include <stdio.h>
+
+#include <time.h>
+#include <errno.h>
 #include <stdint.h>
-#include <stdarg.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdbool.h>
 
-/* The first occurrence of expr is not evaluated due to the sizeof,
-   but will trigger any pedantic warnings masked by the __extension__
-   for the second occurrence. */
-#define assert_M(expr, msg, ...)                                                \
-    ((void) sizeof ((expr) ? 1 : 0), __extension__ ({                           \
-        if (expr)                                                               \
-            ; /* empty */                                                       \
-        else                                                                    \
-            __assert_M (true, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__);   \
-    }))
+#include <sys/stat.h>
+
+#include <libdxwifi/dxwifi.h>
 
 
-#define assert_continue(expr, msg, ...)                                         \
-    ((void) sizeof ((expr) ? 1 : 0), __extension__ ({                           \
-        if (expr)                                                               \
-            ; /* empty */                                                       \
-        else                                                                    \
-            __assert_M (false, #expr, __FILE__, __LINE__, msg, ##__VA_ARGS__);  \
-    }))
+/**
+ *  DESCRIPTION:    Sets the masked bits in word to that of value
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      word:       Word to be modified
+ * 
+ *      mask:       Mask of desired bits to change
+ * 
+ *      value:      Desired value of bits
+ * 
+ */
+void set_bits32(uint32_t* word, uint32_t mask, uint32_t value);
 
 
-#define assert_always(msg, ...) assert_M(0, msg, ##__VA_ARGS__)
+/**
+ *  DESCRIPTION:    Sets the masked bits in word to that of value
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      word:       Word to be modified
+ * 
+ *      mask:       Mask of desired bits to change
+ * 
+ *      value:      Desired value of bits
+ * 
+ */
+void set_bits16(uint16_t* word, uint16_t mask, uint16_t value);
 
 
-static void __assert_M(bool exit, const char* expr, const char* file, int line, const char* msg, ...) {
-    va_list args;
-    fprintf(stderr, "%s:%d Assertion `%s` failed : ", file, line, expr);
-    va_start(args, msg);
-    vfprintf(stderr, msg, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    if( exit ) {
-        abort();
-    }
-}
-
-// Needed to get rid of 'unused-parameter' warnings in release builds
-static inline void __assert_unused(const int dummy, ...) { (void)dummy; }
-#define __DXWIFI_ASSERT_UNUSED(...)\
-  do { if(0) __assert_unused(0, ##__VA_ARGS__); } while(0)
-
-#ifdef NDEBUG
-#define debug_assert(expr)                      __DXWIFI_ASSERT_UNUSED(expr)
-#define debug_assert_M(expr, msg, ...)          __DXWIFI_ASSERT_UNUSED(expr, msg, ##__VA_ARGS__)
-#define debug_assert_always(msg, ...)           __DXWIFI_ASSERT_UNUSED(msg, ##__VA_ARGS__)
-#define debug_assert_continue(expr, msg, ...)   __DXWIFI_ASSERT_UNUSED(expr, msg, ##__VA_ARGS__)
-#else
-#define debug_assert(expr)                      assert_M(expr, "")
-#define debug_assert_M(expr, msg, ...)          assert_M(expr, msg, ##__VA_ARGS__)
-#define debug_assert_always(msg, ...)           assert_always(msg, ##__VA_ARGS__)
-#define debug_assert_continue(expr, msg, ...)   assert_continue(expr, msg, ##__VA_ARGS__)
-#endif
+/**
+ *  DESCRIPTION:    Determines if the given path is a regular file
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      path:       Path to file to check
+ * 
+ *  RETURNS:    
+ *      
+ *      bool:       True if the path leads to a regular file
+ */
+bool is_regular_file(const char* path);
 
 
-static inline void set_bit32(uint32_t *word, uint32_t bit) {
-    *word |= (1 << bit);
-}
+/**
+ *  DESCRIPTION:    Determines if the given path is a directory
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      path:       Path to directory
+ * 
+ *  RETURNS:    
+ *      
+ *      bool:       True if the path leads to a directory
+ */
+bool is_directory(const char* path);
 
 
-static inline void clr_bit32(uint32_t *word, uint32_t bit) {
-    *word &= ~(1 << bit);
-}
+/**
+ *  DESCRIPTION:    Get the size of the file in bytes
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      path:       Path to the file
+ * 
+ *  RETURNS:    
+ *      
+ *      off_t:     Size, in bytes, of the file  or -1
+ * 
+ *  NOTES: For 32 bit systems off_t is limited to about ~2GB. For Large File 
+ *  Support see https://users.suse.com/~aj/linux_lfs.html
+ */
+off_t get_file_size(const char* path);
 
 
-static inline void flip_bit32(uint32_t *word, uint32_t bit) {
-    *word ^= (1 << bit);
-}
+/**
+ *  DESCRIPTION:    Converts the control frame type to a string
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      type:       Control frame type
+ * 
+ *  RETURNS:    
+ *      
+ *      const char*:    C string representing the type
+ */
+const char* control_frame_type_to_str(dxwifi_control_frame_t type);
 
 
-static inline void set_bits32(uint32_t* word, uint32_t mask, uint32_t value) {
-    *word = (*word & ~mask) | (value & mask);
-}
+/**
+ *  DESCRIPTION:    Millisecond sleep
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      msec:       Number of milliseconds to sleep 
+ * 
+ *      require_elapsed:  If this flag is set the subroutine will continue to
+ *                        sleep until msec has elapsed despite interrupts
+ * 
+ *  RETURNS:    
+ *      
+ *      int:        0 if msec elapsed, or -1 if the sleep was interrupted
+ */
+int msleep(unsigned msec, bool require_elapsed);
 
 
-static inline uint32_t check_bit32(uint32_t *word, uint32_t bit) {
-    return *word & (1 << bit);
-}
+/**
+ *  DESCRIPTION:    Appends the filename to the path, adds in '/' if necessary
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      buffer:     Buffer to hold path string. 
+ * 
+ *      n:          size of the buffer
+ * 
+ *      path:       Path string
+ * 
+ *      filename:   Filename to append to path
+ * 
+ */
+void combine_path(char* buffer, size_t n, const char* path, const char* filename);
 
 
-static inline void set_bit16(uint16_t *word, uint16_t bit) {
-    *word |= (1 << bit);
-}
+/**
+ *  DESCRIPTION:    Calculates the offset from a pointer
+ * 
+ *  ARGUMENTS: 
+ *      
+ *      base:       base pointer to calculate offset from
+ * 
+ *      count:      Number of units offset from base
+ * 
+ *      sz:         Step size of each unit
+ * 
+ *  NOTES: Undefined behavior if base is null, count is greater than the number
+ *  of items in the array, the computed offset overflows sizeof(void*)
+ * 
+ */
+static inline void* offset(void* base, size_t count, size_t sz)   { return ((uint8_t*) base) + (count * sz); }
 
 
-static inline void clr_bit16(uint16_t *word, uint16_t bit) {
-    *word &= ~(1 << bit);
-}
+// Gets rid of `unused-parameter` warnings in release builds. Should only be 
+// used in situations where the parameter being ignored is used in concert with 
+// a conditionally compiled function.
+static inline void __unused(const int dummy, ...) { (void)dummy; }
+#define __DXWIFI_UTILS_UNUSED(...)\
+  do { if(0) __unused(0, ##__VA_ARGS__); } while(0)
 
 
-static inline void flip_bit16(uint16_t *word, uint16_t bit) {
-    *word ^= (1 << bit);
-}
+// Only use for array types NOT pointers
+#define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
 
 
-static inline void set_bits16(uint16_t* word, uint16_t mask, uint16_t value) {
-    *word = (*word & ~mask) | (value & mask);
-}
-
-
-static inline uint32_t check_bit16(uint16_t *word, uint16_t bit) {
-    return *word & (1 << bit);
-}
-
-#endif // LIBDXWIFI_UTIIITY_H
+#endif // LIBDXWIFI_UTILITY_H

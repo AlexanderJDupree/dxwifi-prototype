@@ -1,16 +1,14 @@
-#!/bin/bash
-# Simple script to enable monitor mode on a given interface
-# Defaults to enabling monitor mode on mon0 at Channel 3 and txpower of 20dBM
-# Must be run with sudo
+#!/usr/bin/env bash
+# Script attempts to enable a network interface into monitor mode.
+# Note: Must be run with super user privileges
 
-set -e
 
-dev=${1:-mon0}
+set -e 
 
 function cleanup()
 {
     if [[ $? -ne 0 ]]; then
-        echo -e "Usage: sudo ./startMonitor.sh [interface:mon0] [channel:3] [txpower:20]"
+        echo -e "Usage: sudo ./startmonitor.sh [interface:mon0] [channel:3] [txpower:20]"
     else
         echo -e "Enabled $dev in monitor mode"
     fi
@@ -18,11 +16,13 @@ function cleanup()
 
 # keep track of the last executed command
 trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
-# echo an error message before exiting
+# echo message before exiting
 trap cleanup EXIT
 
+dev=${1:-mon0}
+
 ip link set $dev down
-iw dev $dev set monitor fcsfail otherbss
+iw dev $dev set monitor fcsfail otherbss 
 ip link set $dev up
 iw dev $dev set channel ${2:-3}
 iw dev $dev info

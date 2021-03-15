@@ -1,8 +1,22 @@
-.vscode
+# Editor files
+*/.vscode/
+
+
+# Object files
 *.o
+*.obj
 
-bin/*
-build/*
-lib/*
+# Libraries
+*.lib
+*.a
+*.so
+*.so.*
 
-test.md
+# Python stuff
+**/__pycache__/*
+**/__temp/*
+
+# Build Output
+*/bin/*
+*/build/*
+*/lib/*

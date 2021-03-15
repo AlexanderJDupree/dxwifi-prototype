@@ -1,13 +1,6 @@
-cmake_minimum_required(VERSION 3.2)
-project(libdxwifi)
+file(GLOB_RECURSE libdxwifi_sources *)
 
-# Add new files here!
-add_library(dxwifi STATIC 
-            transmitter.c
-            receiver.c
-            ${PROJECT_SOURCE_DIR}/details/heap.c
-            ${PROJECT_SOURCE_DIR}/details/logging.c
-            )   
+add_library(dxwifi STATIC ${libdxwifi_sources})
 
 set_target_properties(dxwifi PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Wno-unused-function")
 
