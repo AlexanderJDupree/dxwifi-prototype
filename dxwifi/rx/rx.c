@@ -166,7 +166,7 @@ dxwifi_rx_state_t setup_handlers_and_capture(dxwifi_receiver* rx, int fd) {
  */
 dxwifi_rx_state_t open_file_and_capture(const char* path, dxwifi_receiver* rx, bool append) {
     int fd          = 0;
-    int open_flags  = O_WRONLY | O_CREAT | (append ? O_APPEND : 0);
+    int open_flags  = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
     mode_t mode     = S_IRUSR  | S_IWUSR | S_IROTH | S_IWOTH; 
 
     dxwifi_rx_state_t state = DXWIFI_RX_ERROR;

@@ -43,6 +43,9 @@ typedef enum {
     DXWIFI_LOG_RX           = 4,
     DXWIFI_LOG_DIRWATCH     = 5,
     DXWIFI_LOG_ENCODE       = 6,
+    DXWIFI_LOG_ENCODER      = 7,
+    DXWIFI_LOG_DECODE       = 8,
+    DXWIFI_LOG_DECODER      = 9,
 
     // Add new modules here
 

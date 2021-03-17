@@ -57,7 +57,7 @@ void encode_file(cli_args* args) {
     int fd_in = open(args->file_in, O_RDWR);
     assert_M(fd_in > 0, "Failed to open file: %s - %s", args->file_in, strerror(errno));
 
-    int open_flags  = O_WRONLY | O_CREAT;
+    int open_flags  = O_WRONLY | O_CREAT | O_TRUNC;
     mode_t mode     = S_IRUSR  | S_IWUSR | S_IROTH | S_IWOTH; 
 
     int fd_out      = args->file_out ? open(args->file_out, open_flags, mode) : STDOUT_FILENO;
