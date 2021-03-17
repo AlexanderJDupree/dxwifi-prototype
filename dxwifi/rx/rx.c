@@ -1,16 +1,15 @@
 /**
- *  rx.c
- * 
- *  DESCRIPTION: DxWiFi Receiver program
- * 
- *  https://github.com/oresat/oresat-dxwifi-software
+ *  rx.c - DxWiFI Receiver program
  * 
  */
 
+
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <signal.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -172,7 +171,7 @@ dxwifi_rx_state_t open_file_and_capture(const char* path, dxwifi_receiver* rx, b
 
     dxwifi_rx_state_t state = DXWIFI_RX_ERROR;
     if((fd = open(path, open_flags, mode)) < 0) {
-        log_error("Failed to open file: %s", path);
+        log_error("Failed to open file: %s - %s", path, strerror(errno));
     }
     else {
         state = setup_handlers_and_capture(rx, fd);

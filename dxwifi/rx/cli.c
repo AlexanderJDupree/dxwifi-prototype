@@ -26,6 +26,8 @@
 
 #define GET_KEY(x, group) (x + group)
 
+const char* argp_program_version = DXWIFI_VERSION;
+
 typedef enum {
     SNAPLEN,
     BUFFER_TIMEOUT,

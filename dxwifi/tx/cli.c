@@ -1,10 +1,6 @@
 /**
- *  cli.c
+ *  cli.c - See cli.h for description
  *  
- *  DESCRIPTION: Command line interface for tx.c
- * 
- *  https://github.com/oresat/oresat-dxwifi-software
- * 
  */
 
 
@@ -41,6 +37,8 @@ typedef enum {
     WATCHDIR_TIMEOUT,
 } directory_mode_settings_t;
 
+
+const char* argp_program_version = DXWIFI_VERSION;
 
 // Description of key arguments 
 static char args_doc[] = "input-file(s)/directory(s)";
