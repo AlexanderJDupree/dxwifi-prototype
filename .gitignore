@@ -17,6 +17,6 @@
 **/__temp/*
 
 # Build Output
-bin/*
+**/bin/*
 build/*
 lib/*

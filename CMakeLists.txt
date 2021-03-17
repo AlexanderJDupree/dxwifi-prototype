@@ -11,6 +11,8 @@ if(NOT CMAKE_BUILD_TYPE)
         FORCE)
 endif()
 
+add_compile_definitions(DXWIFI_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
+
 option(LIBDXWIFI_DISABLE_ASSERTS    "Disable Assert Functions"     OFF)
 option(LIBDXWIFI_DISABLE_LOGGING    "Disable Logging"              OFF)
 
@@ -22,7 +24,7 @@ if(LIBDXWIFI_DISABLE_LOGGING)
     add_compile_definitions(LIBDXWIFI_DISABLE_LOGGING)
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR} openfec/src/lib_common)
 
 set(DXWIFI_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE})
 set(DXWIFI_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/${CMAKE_BUILD_TYPE})
@@ -32,3 +34,4 @@ add_subdirectory(openfec)
 add_subdirectory(libdxwifi)
 add_subdirectory(dxwifi/tx)
 add_subdirectory(dxwifi/rx)
+add_subdirectory(dxwifi/encode)
