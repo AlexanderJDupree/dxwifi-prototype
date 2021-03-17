@@ -327,6 +327,24 @@ void start_transmission(dxwifi_transmitter* transmitter, int fd, dxwifi_tx_stats
 
 
 /**
+ *  DESCRIPTION:        Transmit nbytes from data, 
+ * 
+ *  ARGUMENTS:
+ * 
+ *      transmitter:    pointer to an allocated transmitter object
+ * 
+ *      data:           Bytes to transmit
+ * 
+ *      nbytes:         Number of bytes to transmit
+ * 
+ *      out:            Pointer to an allocated stats object or NULL if stats
+ *                      aren't needed. 
+ * 
+ */
+void transmit_bytes(dxwifi_transmitter* transmitter, const void* data, size_t nbytes, dxwifi_tx_stats* out);
+
+
+/**
  *  DESCRIPTION:    Signals to the transmitter to stop transmitting packets
  * 
  *  ARGUMENTS:
