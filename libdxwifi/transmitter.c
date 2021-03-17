@@ -1,10 +1,6 @@
 /**
- *  transmitter.c
+ *  transmitter.c - see transmitter.h for description
  *  
- *  DESCRIPTION: see transmitter.h for description
- * 
- *  https://github.com/oresat/oresat-dxwifi-software
- * 
  */
 
 

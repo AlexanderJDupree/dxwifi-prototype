@@ -1,10 +1,6 @@
 /**
- *  transmitter.h
- *  
- *  DESCRIPTION: Transmitter reads blocks of data from an input source, attaches 
- *  required headers, and then injects the packet with Pcap
- * 
- *  https://github.com/oresat/oresat-dxwifi-software
+ *  transmitter.h - Transmitter reads blocks of data from an input source, attaches 
+ *                  required headers, and then injects the packet with Pcap
  * 
  *  NOTES: struct fields prefixed with a '__' denote private scope
  * 

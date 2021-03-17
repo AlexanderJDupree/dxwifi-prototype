@@ -11,10 +11,11 @@
 
 #include <fcntl.h>
 #include <unistd.h>
-
-#include <of_openfec_api.h>
+#include <sys/mman.h>
 
 #include <dxwifi/encode/cli.h>
+
+#include <libdxwifi/encoder.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/assert.h>
 #include <libdxwifi/details/logging.h>
@@ -50,69 +51,43 @@ int main(int argc, char** argv) {
 
 void encode_file(cli_args* args) {
 
-    of_status_t status = OF_STATUS_OK;
+    void* encoded_message = NULL;
 
-    of_session_t* openfec_session = NULL;
-
-    off_t file_size = get_file_size(args->file_in);
-    assert_M(file_size > 0, "Failed to get file size");
-
-    uint32_t k =  ceil((float) file_size / (float) args->blocksize);
-    uint32_t n = k / args->coderate;  
-    of_ldpc_parameters_t codec_params = {
-        .nb_source_symbols      = k,
-        .nb_repair_symbols      = n - k,
-        .encoding_symbol_length = args->blocksize,
-        .prng_seed              =  rand(), // TODO no seed for rand()
-
-        // N1 denotes the target number of "1s" per column in the left side of the parity check matrix.
-        .N1                     = (n-k) > 7 ? 7 : (n-k) // TODO magic number
-    };
-
-
-    log_info("k=%d, n=%d N1=%d", k, n);
-
-    status = of_create_codec_instance(&openfec_session, OF_CODEC_LDPC_STAIRCASE_STABLE, OF_ENCODER, 2);
-    assert_M(status == OF_STATUS_OK, "Failed to initialize OpenFEC Session");
-
-    status = of_set_fec_parameters(openfec_session, (of_parameters_t*) &codec_params);
-    assert_M(status == OF_STATUS_OK, "Failed to set codec parameters");
-
-    int fd = open(args->file_in, O_RDWR);
-    assert_M(fd > 0, "Failed to open file: %s - %s", args->file_in, strerror(errno));
-
-    // Allocate N blocks of memory
-    uint8_t* symbols = calloc(n, args->blocksize);
-    assert_M(symbols, "Calloc failure");
-
-    // Read data into first K blocks
-    ssize_t nbytes = read(fd, symbols, file_size);
-    assert_M(nbytes == file_size, "Failed to read file");
-
-    close(fd);
-
-    // Setup symbol table
-    void* symbol_table[n];
-    for(int esi = 0; esi < n; ++esi) {
-        symbol_table[esi] = symbols + (esi * args->blocksize);
-    }
-
-    // Build repair symbols
-    for(int esi = k; esi < n; ++esi) {
-        status = of_build_repair_symbol(openfec_session, symbol_table, esi);
-        assert_M(status == OF_STATUS_OK, "Failed to build repair symbol. esi=%d", esi);
-    }
+    // Setup File In / File Out
+    int fd_in = open(args->file_in, O_RDWR);
+    assert_M(fd_in > 0, "Failed to open file: %s - %s", args->file_in, strerror(errno));
 
     int open_flags  = O_WRONLY | O_CREAT;
     mode_t mode     = S_IRUSR  | S_IWUSR | S_IROTH | S_IWOTH; 
-    fd = args->file_out ? open(args->file_out, open_flags, mode) : STDOUT_FILENO;
-    assert_M(fd > 0, "Failed to open file: %s - %s", args->file_out, strerror(errno));
 
-    nbytes = write(fd, symbols, n * args->blocksize);
-    assert_M(nbytes == (n * args->blocksize), "Partial write occured: %d - %s", nbytes, strerror(errno));
+    int fd_out      = args->file_out ? open(args->file_out, open_flags, mode) : STDOUT_FILENO;
+    assert_M(fd_out > 0, "Failed to open file: %s - %s", args->file_out, strerror(errno));
 
-    of_release_codec_instance(openfec_session);
+    off_t file_size = get_file_size(args->file_in);
 
+    void* file_data = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd_in, 0);
+    assert_M(file_data != MAP_FAILED, "Failed to map file to memory - %s", strerror(errno));
+
+    // Encode File contents
+    uint32_t k =  ceil((float) file_size / (float) args->blocksize);
+    uint32_t n = k / args->coderate;  
+
+    dxwifi_encoder* encoder = init_encoder(k, n, args->blocksize);
+
+    size_t msg_size = dxwifi_encode(encoder, file_data, file_size, &encoded_message);
+
+    // Write out encoded file and teardown resources
+    int nbytes = write(fd_out, encoded_message, msg_size);
+    assert_M(nbytes == msg_size, "Partial write occured: %d/%d - %s", nbytes, msg_size, strerror(errno));
+
+    close(fd_in);
+
+    if(args->file_out) {
+        close(fd_out);
+    }
+
+    close_encoder(encoder);
+    munmap(file_data, file_size);
 }
 
 

@@ -1,9 +1,5 @@
 /**
- *  tx.c
- * 
- *  DESCRIPTION: DxWiFi Transmission program
- * 
- *  https://github.com/oresat/oresat-dxwifi-software
+ *  tx.c - DxWiFi transmission program
  * 
  */
 

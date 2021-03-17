@@ -7,4 +7,4 @@ set_target_properties(encode
     RUNTIME_OUTPUT_DIRECTORY ${DXWIFI_RUNTIME_OUTPUT_DIRECTORY}
     )
 
-target_link_libraries(encode dxwifi openfec)
+target_link_libraries(encode dxwifi)
