@@ -4,7 +4,6 @@
  */
 
 
-#include <math.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +50,7 @@ int main(int argc, char** argv) {
 
 void encode_file(cli_args* args) {
 
-    // Setup File In / File Out
+    // Setup File-In / File-Out
     int fd_in = open(args->file_in, O_RDWR);
     assert_M(fd_in > 0, "Failed to open file: %s - %s", args->file_in, strerror(errno));
 
@@ -66,13 +65,10 @@ void encode_file(cli_args* args) {
     void* file_data = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd_in, 0);
     assert_M(file_data != MAP_FAILED, "Failed to map file to memory - %s", strerror(errno));
 
-    // Encode File contents
-    uint32_t k =  ceil((float) file_size / (float) args->blocksize);
-    uint32_t n = k / args->coderate;  
-
-    dxwifi_encoder* encoder = init_encoder(k, n, args->blocksize);
-
+    // FEC Encode File-In
     void* encoded_message = NULL;
+
+    dxwifi_encoder* encoder = init_encoder(file_size, args->blocksize, args->coderate);
 
     size_t msg_size = dxwifi_encode(encoder, file_data, file_size, &encoded_message);
 
@@ -85,6 +81,7 @@ void encode_file(cli_args* args) {
         close(fd_out);
     }
 
+    free(encoded_message);
     close_encoder(encoder);
     munmap(file_data, file_size);
 }

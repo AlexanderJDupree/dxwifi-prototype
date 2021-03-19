@@ -3,6 +3,8 @@
  * 
  */
 
+#include <math.h>
+
 #include <arpa/inet.h>
 
 #include <of_openfec_api.h>
@@ -26,16 +28,34 @@ struct __dxwifi_encoder {
 };
 
 
-dxwifi_encoder* init_encoder(unsigned k, unsigned n, unsigned symbol_size) {
+static void log_encoder_config(dxwifi_encoder* encoder) {
+    log_info(
+        "DxWiFi Encoder\n"
+        "\tK:           %d\n"
+        "\tN:           %d\n"
+        "\tSymbol Size: %d\n",
+        encoder->k,
+        encoder->n,
+        encoder->symbol_size
+    );
+}
+
+
+dxwifi_encoder* init_encoder(size_t msglen, size_t symbol_size, float coderate) {
     of_status_t status = OF_STATUS_OK;
 
     dxwifi_encoder* encoder = calloc(1, sizeof(dxwifi_encoder));
     assert_M(encoder, "Failed to allocate space for encoder");
 
+    uint32_t k = ceil((float) msglen / symbol_size);
+    uint32_t n = k / coderate;  
+
     encoder->k = k;
     encoder->n = n;
     encoder->symbol_size = symbol_size;
     encoder->openfec_session = NULL;
+
+    log_encoder_config(encoder);
 
     of_ldpc_parameters_t codec_params = {
         .nb_source_symbols      = k,
@@ -57,11 +77,13 @@ dxwifi_encoder* init_encoder(unsigned k, unsigned n, unsigned symbol_size) {
 
 
 void close_encoder(dxwifi_encoder* encoder) {
-    of_release_codec_instance(encoder->openfec_session);
+    if(encoder) {
+        of_release_codec_instance(encoder->openfec_session);
 
-    free(encoder);
+        free(encoder);
 
-    encoder = NULL;
+        encoder = NULL;
+    }
 }
 
 
@@ -81,7 +103,7 @@ size_t dxwifi_encode(dxwifi_encoder* encoder, void* message, size_t msglen, void
     for(size_t esi = 0; esi < encoder->k; ++esi) {
         void* symbol = offset(encoded_message, esi, stride) + sizeof(dxwifi_oti);
 
-        // Copy symbol size bytes from message, or left over chunk
+        // Copy symbol size bytes from message, or whatevers left over
         size_t nbytes = encoder->symbol_size < msglen ? encoder->symbol_size : msglen;
         memcpy(symbol, offset(message, esi, encoder->symbol_size), nbytes);
 
