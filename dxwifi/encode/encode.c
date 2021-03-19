@@ -51,8 +51,6 @@ int main(int argc, char** argv) {
 
 void encode_file(cli_args* args) {
 
-    void* encoded_message = NULL;
-
     // Setup File In / File Out
     int fd_in = open(args->file_in, O_RDWR);
     assert_M(fd_in > 0, "Failed to open file: %s - %s", args->file_in, strerror(errno));
@@ -60,7 +58,7 @@ void encode_file(cli_args* args) {
     int open_flags  = O_WRONLY | O_CREAT | O_TRUNC;
     mode_t mode     = S_IRUSR  | S_IWUSR | S_IROTH | S_IWOTH; 
 
-    int fd_out      = args->file_out ? open(args->file_out, open_flags, mode) : STDOUT_FILENO;
+    int fd_out = args->file_out ? open(args->file_out, open_flags, mode) : STDOUT_FILENO;
     assert_M(fd_out > 0, "Failed to open file: %s - %s", args->file_out, strerror(errno));
 
     off_t file_size = get_file_size(args->file_in);
@@ -74,6 +72,8 @@ void encode_file(cli_args* args) {
 
     dxwifi_encoder* encoder = init_encoder(k, n, args->blocksize);
 
+    void* encoded_message = NULL;
+
     size_t msg_size = dxwifi_encode(encoder, file_data, file_size, &encoded_message);
 
     // Write out encoded file and teardown resources
@@ -81,7 +81,6 @@ void encode_file(cli_args* args) {
     assert_M(nbytes == msg_size, "Partial write occured: %d/%d - %s", nbytes, msg_size, strerror(errno));
 
     close(fd_in);
-
     if(args->file_out) {
         close(fd_out);
     }

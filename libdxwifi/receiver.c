@@ -19,6 +19,7 @@
 #include <libdxwifi/dxwifi.h>
 #include <libdxwifi/receiver.h>
 #include <libdxwifi/details/heap.h>
+#include <libdxwifi/details/crc32.h>
 #include <libdxwifi/details/assert.h>
 #include <libdxwifi/details/logging.h>
 
@@ -68,6 +69,10 @@ typedef struct {
 static bool order_by_frame_number_desc(const uint8_t* lhs, const uint8_t* rhs) {
     packet_heap_node* node1 = (packet_heap_node*) lhs;
     packet_heap_node* node2 = (packet_heap_node*) rhs;
+
+    if(node1->frame_number == node2->frame_number) {
+        return node1->crc_valid;
+    }
 
     return node1->frame_number < node2->frame_number;
 }
@@ -162,7 +167,7 @@ static dxwifi_rx_frame parse_rx_frame_fields(const struct pcap_pkthdr* pkt_stats
     frame.rtap_hdr  = (ieee80211_radiotap_hdr*) data;
     frame.mac_hdr   = (ieee80211_hdr*)(data + frame.rtap_hdr->it_len);
     frame.payload   = data + frame.rtap_hdr->it_len + sizeof(ieee80211_hdr);
-    frame.fcs       = data + pkt_stats->caplen - IEEE80211_FCS_SIZE;
+    frame.fcs       = (uint32_t*) (data + pkt_stats->caplen - IEEE80211_FCS_SIZE);
     return frame;
 }
 
@@ -380,18 +385,21 @@ static void process_frame(uint8_t* args, const struct pcap_pkthdr* pkt_stats, co
 
         // TODO parse radiotap header data and store provided info
 
-        ssize_t payload_size = rx_frame.fcs - rx_frame.payload;
+        ssize_t payload_size = (uint8_t*)rx_frame.fcs - rx_frame.payload;
 
         int32_t frame_number = (fc->rx->ordered 
             ? extract_frame_number(rx_frame.mac_hdr) 
             : fc->rx_stats.num_packets_processed);
+
+        // Compute CRC from Mac header to end of payload
+        uint32_t crc = crc32((uint8_t*)rx_frame.mac_hdr, (uint8_t*)rx_frame.fcs - (uint8_t*)rx_frame.mac_hdr);
 
         // Heap node only points to the payload data
         packet_heap_node node = {
             .frame_number   = frame_number,
             .data           = rx_frame.payload,
             .size           = payload_size,
-            .crc_valid      = false // TODO verify CRC
+            .crc_valid      = (crc == *rx_frame.fcs)
         };
         heap_push(&fc->packet_heap, &node);
 

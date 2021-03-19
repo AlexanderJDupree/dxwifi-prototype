@@ -58,7 +58,7 @@ typedef struct {
     ieee80211_radiotap_hdr  *rtap_hdr;  /* packed radiotap header       */
     ieee80211_hdr           *mac_hdr;   /* link-layer header            */
     uint8_t                 *payload;   /* packet data                  */
-    uint8_t                 *fcs;       /* frame check sequence         */
+    uint32_t                *fcs;       /* frame check sequence         */
 
     uint8_t                 *__frame;   /* storage for the data         */
 } dxwifi_rx_frame;
