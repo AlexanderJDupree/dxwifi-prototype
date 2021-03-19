@@ -99,6 +99,7 @@ void decode_file(cli_args* args) {
         log_fatal("i=%d", i);
         oti = file_data + i;
         log_fatal("esi=%d", ntohl(oti->esi));
+
         of_decode_with_new_symbol(openfec_session, file_data + i + sizeof(dxwifi_oti), ntohl(oti->esi));
     }
     if(!of_is_decoding_complete(openfec_session)) {

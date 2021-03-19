@@ -9,6 +9,7 @@
 
 #include <libdxwifi/encoder.h>
 #include <libdxwifi/details/utils.h>
+#include <libdxwifi/details/crc32.h>
 #include <libdxwifi/details/assert.h>
 #include <libdxwifi/details/logging.h>
 
@@ -73,7 +74,8 @@ size_t dxwifi_encode(dxwifi_encoder* encoder, void* message, size_t msglen, void
     void* encoded_message = calloc(encoder->n, stride);
     assert_M(encoded_message, "Failed to allocate memory for encoded message");
 
-    // Setup symbol table
+    // Setup symbol table and CRCs
+    uint32_t crcs[encoder->n];
     void* symbol_table[encoder->n];
 
     for(size_t esi = 0; esi < encoder->k; ++esi) {
@@ -85,6 +87,8 @@ size_t dxwifi_encode(dxwifi_encoder* encoder, void* message, size_t msglen, void
 
         symbol_table[esi] = symbol;
 
+        crcs[esi] = crc32(symbol, encoder->symbol_size);
+
         msglen -= nbytes;
     }
 
@@ -93,6 +97,8 @@ size_t dxwifi_encode(dxwifi_encoder* encoder, void* message, size_t msglen, void
         symbol_table[esi] = offset(encoded_message, esi, stride) + sizeof(dxwifi_oti);
         status = of_build_repair_symbol(encoder->openfec_session, symbol_table, esi);
         assert_continue(status == OF_STATUS_OK, "Failed to build repair symbol. esi=%d", esi);
+
+        crcs[esi] = crc32(symbol_table[esi], encoder->symbol_size);
     }
 
     // Fill out OTI headers
@@ -101,7 +107,7 @@ size_t dxwifi_encode(dxwifi_encoder* encoder, void* message, size_t msglen, void
         oti->esi         = htonl(esi);
         oti->n           = htonl(encoder->n);
         oti->k           = htonl(encoder->k);
-        oti->crc         = htonl(0); // TODO calculate crc
+        oti->crc         = htonl(crcs[esi]);
         oti->symbol_size = htonl(encoder->symbol_size);
     }
 
