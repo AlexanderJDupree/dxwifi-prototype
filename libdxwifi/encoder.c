@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>
 
+#include <rscode/ecc.h>
 #include <of_openfec_api.h>
 
 #include <libdxwifi/encoder.h>

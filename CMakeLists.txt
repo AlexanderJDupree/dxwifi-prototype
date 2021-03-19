@@ -30,6 +30,7 @@ set(DXWIFI_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE
 set(DXWIFI_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/${CMAKE_BUILD_TYPE})
 set(DXWIFI_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/${CMAKE_BUILD_TYPE})
 
+add_subdirectory(rscode)
 add_subdirectory(openfec)
 add_subdirectory(libdxwifi)
 add_subdirectory(dxwifi/tx)
