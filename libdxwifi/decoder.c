@@ -64,7 +64,7 @@ dxwifi_decoder* init_decoder(void* encoded, size_t msglen) {
     uint32_t k = ntohl(oti->k);
 
     of_ldpc_parameters_t codec_params = {
-        .nb_source_symbols      = n,
+        .nb_source_symbols      = k,
         .nb_repair_symbols      = n - k,
         .encoding_symbol_length = DXWIFI_FEC_SYMBOL_SIZE,
         .prng_seed              = rand(), // TODO, does this need to match the encoder prng_seed?

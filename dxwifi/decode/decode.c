@@ -12,7 +12,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <arpa/inet.h>
 
 #include <dxwifi/decode/cli.h>
 
