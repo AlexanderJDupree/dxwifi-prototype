@@ -16,10 +16,6 @@
 #include <libdxwifi/details/assert.h>
 #include <libdxwifi/details/logging.h>
 
-// https://tools.ietf.org/html/rfc6816 - N1 definition
-#define LDPC_N1_MAX 10
-#define LDPC_N1_MIN 3
-
 
 struct __dxwifi_encoder {
     uint32_t k;
@@ -74,9 +70,9 @@ void update_encoder_params(dxwifi_encoder* encoder, size_t msglen, float coderat
         .nb_repair_symbols      = n - k,
         .encoding_symbol_length = symbol_size,
         .prng_seed              =  rand(), // TODO no seed for rand()
-        .N1                     = (n-k) > LDPC_N1_MAX ? LDPC_N1_MAX : (n-k) 
+        .N1                     = (n-k) > DXWIFI_LDPC_N1_MAX ? DXWIFI_LDPC_N1_MAX : (n-k) 
     };
-    assert_M(codec_params.N1 >= LDPC_N1_MIN, "N - K must be >= %d", LDPC_N1_MIN);
+    assert_M(codec_params.N1 >= DXWIFI_LDPC_N1_MIN, "N - K must be >= %d", DXWIFI_LDPC_N1_MIN);
 
     status = of_create_codec_instance(&encoder->openfec_session, OF_CODEC_LDPC_STAIRCASE_STABLE, OF_ENCODER, 2); // TODO magic number
     assert_M(status == OF_STATUS_OK, "Failed to initialize OpenFEC session");

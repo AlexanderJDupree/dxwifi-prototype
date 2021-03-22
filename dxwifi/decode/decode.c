@@ -14,11 +14,9 @@
 #include <sys/mman.h>
 #include <arpa/inet.h>
 
-#include <of_openfec_api.h>
-
 #include <dxwifi/decode/cli.h>
 
-#include <libdxwifi/encoder.h>
+#include <libdxwifi/decoder.h>
 #include <libdxwifi/details/utils.h>
 #include <libdxwifi/details/assert.h>
 #include <libdxwifi/details/logging.h>
@@ -67,58 +65,23 @@ void decode_file(cli_args* args) {
     assert_M(file_data != MAP_FAILED, "Failed to map file to memory - %s", strerror(errno));
 
     // Decode file
-    dxwifi_oti* oti      = file_data;
-    uint32_t esi         = ntohl(oti->esi);
-    uint32_t n           = ntohl(oti->n);
-    uint32_t k           = ntohl(oti->k);
-    uint32_t crc         = ntohl(oti->crc);
-    uint32_t symbol_size = DXWIFI_FEC_SYMBOL_SIZE;
+    dxwifi_decoder* decoder = init_decoder(file_data, file_size);
 
-    log_fatal("esi=%d, n=%d, k=%d, symbol size=%d", esi, n, k);
+    void* decoded_msg = NULL;
+    size_t msglen = dxwifi_decode(decoder, file_data, file_size, &decoded_msg);
 
-    of_ldpc_parameters_t codec_params = {
-        .nb_source_symbols      = k,
-        .nb_repair_symbols      = n - k,
-        .encoding_symbol_length = symbol_size,
-        .prng_seed              = rand(),
-        .N1                     = (n-k) > 10 ? 10 : (n-k)
-    };
-    of_session_t* openfec_session = NULL;
-    of_status_t status = OF_STATUS_OK;
-
-    status = of_create_codec_instance(&openfec_session, OF_CODEC_LDPC_STAIRCASE_STABLE, OF_DECODER, 2);
-    assert_M(status == OF_STATUS_OK, "Failed to initialize OpenFEC session");
-
-    status = of_set_fec_parameters(openfec_session, (of_parameters_t*) &codec_params);
-    assert_M(status == OF_STATUS_OK, "Failed to set codec parameters");
-
-    void* symbol_table[n];
-
-    for (size_t i = 0; i < file_size; i += (symbol_size + sizeof(dxwifi_oti))) 
-    {
-        log_fatal("i=%d", i);
-        oti = file_data + i;
-        log_fatal("esi=%d", ntohl(oti->esi));
-
-        of_decode_with_new_symbol(openfec_session, file_data + i + sizeof(dxwifi_oti), ntohl(oti->esi));
-    }
-    if(!of_is_decoding_complete(openfec_session)) {
-        status = of_finish_decoding(openfec_session);
-        if(status != OF_STATUS_OK) {
-            log_fatal("Couldn't finish decoding");
-            // Asssert here? log what we have?
-        }
+    if(decoded_msg) {
+        write(fd_out, decoded_msg, msglen);
+        free(decoded_msg);
     }
 
-    status = of_get_source_symbols_tab(openfec_session, symbol_table);
-    if(status != OF_STATUS_OK) {
-        log_fatal("Failed to get src symbols");
-        // Asssert here? log what we have?
+    // Teardown resources
+    close(fd_in);
+    if(args->file_out) {
+        close(fd_out);
     }
-
-    for(size_t esi = 0; esi < k; ++esi) {
-        write(fd_out, symbol_table[esi], symbol_size);
-    }
+    close_decoder(decoder);
+    munmap(file_data, file_size);
 }
 
 

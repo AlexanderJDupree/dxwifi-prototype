@@ -70,17 +70,18 @@ void encode_file(cli_args* args) {
     dxwifi_encoder* encoder = init_encoder(file_size, args->coderate);
 
     size_t msg_size = dxwifi_encode(encoder, file_data, file_size, &encoded_message);
+    if(encoded_message) { // FEC encode success, write out encoded message
+        int nbytes = write(fd_out, encoded_message, msg_size);
+        assert_M(nbytes == msg_size, "Partial write occured: %d/%d - %s", nbytes, msg_size, strerror(errno));
 
-    // Write out encoded file and teardown resources
-    int nbytes = write(fd_out, encoded_message, msg_size);
-    assert_M(nbytes == msg_size, "Partial write occured: %d/%d - %s", nbytes, msg_size, strerror(errno));
+        free(encoded_message);
+    }
 
+    // Teardown resources
     close(fd_in);
     if(args->file_out) {
         close(fd_out);
     }
-
-    free(encoded_message);
     close_encoder(encoder);
     munmap(file_data, file_size);
 }

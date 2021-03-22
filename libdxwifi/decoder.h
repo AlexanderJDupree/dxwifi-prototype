@@ -29,11 +29,9 @@ typedef struct __dxwifi_decoder dxwifi_decoder;
  * 
  *  ARGUMENTS:
  * 
+ *      encoded:        Encoded message data 
+ * 
  *      msglen:         Length, in bytes, of the raw message to encode
- * 
- *      symbol_size:    Desired size of each FEC block
- * 
- *      coderate:       Rate at which to encode repair symbols
  * 
  *  RETURNS:
  *      
@@ -41,7 +39,7 @@ typedef struct __dxwifi_decoder dxwifi_decoder;
  *      to free this decoder. Please use the close_decoder() method instead. 
  * 
  */
-dxwifi_decoder* init_decoder();
+dxwifi_decoder* init_decoder(void* encoded, size_t msglen);
 
 
 /**
@@ -49,7 +47,7 @@ dxwifi_decoder* init_decoder();
  * 
  *  ARGUMENTS:
  *      
- *      encoder:        Pointer to an initialized dxwifi decoder
+ *      decoder:        Pointer to an initialized dxwifi decoder
  * 
  */
 void close_decoder(dxwifi_decoder* decoder);
@@ -59,6 +57,6 @@ void close_decoder(dxwifi_decoder* decoder);
  *  DESCRIPTION:
  * 
  */
-size_t dxwifi_decode(dxwifi_decoder* decoder, void* encoded_message);
+size_t dxwifi_decode(dxwifi_decoder* decoder, void* encoded_message, size_t msglen, void** out);
 
 #endif // LIBDXWIFI_DECODER_H
