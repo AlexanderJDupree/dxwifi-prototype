@@ -27,7 +27,6 @@ static char doc[] =
 // Available command line options 
 static struct argp_option opts[] = {
     { "output",         'o', "<path>",              0, "Output file path",                                   PRIMARY_GROUP },
-    { "blocksize",      'b', "<blocksize>",         0, "Size in bytes of each block read from file",         PRIMARY_GROUP },
     { "coderate",       'c', "[0,1]",               0, "Rate of repair symbols ",                            PRIMARY_GROUP },
 
 
@@ -62,14 +61,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state *state) {
         }
         else {
             args->file_in = arg;
-        }
-        break;
-
-    case 'b':
-        args->blocksize = atoi(arg);
-        if(args->blocksize < DXWIFI_BLOCK_SIZE_MIN || args->blocksize > DXWIFI_BLOCK_SIZE_MAX) {
-            argp_error(state, "Blocksize must be in the range(%d, %d)", DXWIFI_BLOCK_SIZE_MIN, DXWIFI_BLOCK_SIZE_MAX);
-            argp_usage(state);
         }
         break;
 

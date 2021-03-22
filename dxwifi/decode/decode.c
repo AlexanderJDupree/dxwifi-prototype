@@ -72,9 +72,9 @@ void decode_file(cli_args* args) {
     uint32_t n           = ntohl(oti->n);
     uint32_t k           = ntohl(oti->k);
     uint32_t crc         = ntohl(oti->crc);
-    uint32_t symbol_size = ntohl(oti->symbol_size);
+    uint32_t symbol_size = DXWIFI_FEC_SYMBOL_SIZE;
 
-    log_fatal("esi=%d, n=%d, k=%d, symbol size=%d", esi, n, k, symbol_size);
+    log_fatal("esi=%d, n=%d, k=%d, symbol size=%d", esi, n, k);
 
     of_ldpc_parameters_t codec_params = {
         .nb_source_symbols      = k,

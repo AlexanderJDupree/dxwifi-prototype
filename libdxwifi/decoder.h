@@ -1,5 +1,5 @@
 /**
- *  decoder.h - API to FEC encode data 
+ *  decoder.h - API to decode FEC data
  * 
  */
 
@@ -59,6 +59,6 @@ void close_decoder(dxwifi_decoder* decoder);
  *  DESCRIPTION:
  * 
  */
-size_t dxwifi_encode(dxwifi_decoder* decoder, void* encoded_message);
+size_t dxwifi_decode(dxwifi_decoder* decoder, void* encoded_message);
 
 #endif // LIBDXWIFI_DECODER_H

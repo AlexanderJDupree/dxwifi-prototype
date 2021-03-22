@@ -12,12 +12,24 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <rscode/ecc.h>
 
 
 /************************
  *  Constants
  ***********************/
 
+// Number of RS encoded chunks per LDPC frame
+#define DXWIFI_RSCODE_BLOCKS_PER_FRAME 5
+
+// Total size of the LDPC encoded symbol with OTI
+#define DXWIFI_LDPC_FRAME_SIZE (RSCODE_MAX_MSG_LEN * DXWIFI_RSCODE_BLOCKS_PER_FRAME)
+
+// Maximum allowed symbol size
+#define DXWIFI_FEC_SYMBOL_SIZE (DXWIFI_LDPC_FRAME_SIZE - sizeof(dxwifi_oti));
+
+// Total size of the LDPC encoded symbol with RS encoding and OTI
+#define DXWIFI_RS_LDPC_FRAME_SIZE ((DXWIFI_RSCODE_BLOCKS_PER_FRAME * RSCODE_NPAR) + DXWIFI_LDPC_FRAME_SIZE)
 
 /************************
  *  Data structures
@@ -28,7 +40,6 @@ typedef struct __attribute__((packed)) {
     uint32_t n;
     uint32_t k;
     uint32_t crc;
-    uint32_t symbol_size;
 } dxwifi_oti; 
 
 typedef struct __dxwifi_encoder dxwifi_encoder;
@@ -44,8 +55,6 @@ typedef struct __dxwifi_encoder dxwifi_encoder;
  * 
  *      msglen:         Length, in bytes, of the raw message to encode
  * 
- *      symbol_size:    Desired size of each FEC block
- * 
  *      coderate:       Rate at which to encode repair symbols
  * 
  *  RETURNS:
@@ -54,7 +63,22 @@ typedef struct __dxwifi_encoder dxwifi_encoder;
  *      to free this encoder. Please use the close_encoder() method instead. 
  * 
  */
-dxwifi_encoder* init_encoder(size_t msglen, size_t symbol_size, float coderate);
+dxwifi_encoder* init_encoder(size_t msglen, float coderate);
+
+
+/**
+ *  DESCRIPTION:        Re-initializes the FEC encoder with new parameters
+ * 
+ *  ARGUMENTS:
+ *      
+ *      encoder:        Pointer to an initialized dxwifi encoder
+ * 
+ *      msglen:         Length, in bytes, of the raw message to encode
+ * 
+ *      coderate:       Rate at which to encode repair symbols
+ * 
+ */
+void update_encoder_params(dxwifi_encoder* encoder, size_t msglen, float coderate);
 
 
 /**
